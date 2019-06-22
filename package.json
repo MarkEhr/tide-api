@@ -1,0 +1,37 @@
+{
+  "name": "tide-api",
+  "version": "0.0.1",
+  "description": "Utility intended to easily consume a rest api in javascript projects",
+  "main": "dist/index.js",
+  "scripts": {
+    "webpack": "webpack --mode production",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarkEhr/tide-api.git"
+  },
+  "keywords": [
+    "api",
+    "rest"
+  ],
+  "author": "Mark Ehrlich",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MarkEhr/tide-api/issues"
+  },
+  "homepage": "https://github.com/MarkEhr/tide-api#readme",
+  "devDependencies": {
+    "@babel/core": "^7.4.5",
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
+    "@babel/preset-env": "^7.4.5",
+    "babel-loader": "^8.0.6",
+    "webpack": "^4.34.0",
+    "webpack-cli": "^3.3.4"
+  },
+  "dependencies": {
+    "js-md5": "^0.7.3",
+    "qs": "^6.7.0",
+    "url-join": "^4.0.0"
+  }
+}
