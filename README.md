@@ -1,4 +1,4 @@
-#TIDE API
+# TIDE API
 
 This is intended to easily consume a rest api in javascript projects.
 
