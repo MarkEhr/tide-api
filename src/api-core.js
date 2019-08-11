@@ -506,7 +506,6 @@ export default class Api {
 
             if( response && response.headers ) {
                 responseHeaders = response.headers;
-                this.responseHeadersHandler(response.headers);
             }
 
             if (response.status === 401) {
@@ -566,72 +565,6 @@ export default class Api {
                 type: ACTION_PREFIX+STATE_ACTION_CLEAR,
                 payload: {property}
             })
-    };
-
-    responseHeadersHandler = ( headers )=>{
-
-        if( headers.get("X-App-Version") )
-            this.handleVersionHeader(headers.get("X-App-Version") );
-
-        //if( process.env.REACT_APP_BUILD === 'prod' )
-        //    this.turnOnWebDebugger();
-
-    };
-
-    handleVersionHeader = ( versionHeader )=>{
-
-        if( typeof  versionHeader !== 'string' )
-            return;
-
-        const size = versionHeader.length;
-        let forceReload = false;
-
-        if( versionHeader[ size-1 ] === 'f' ) {
-            forceReload = true;
-            versionHeader = versionHeader.slice( 0, size-1 );
-        }
-
-        if( versionHeader === version )
-            return;
-
-        const headerParts = versionHeader.split('.');
-        const appParts = version.split('.');
-
-        if( Number(headerParts[0]) > Number(appParts[0]) )
-            return this.handleNewerVersion( versionHeader, forceReload );
-
-        if( Number(headerParts[0]) < Number(appParts[0]) )
-            return;
-
-        if( Number(headerParts[1]) > Number(appParts[1]) )
-            return this.handleNewerVersion( versionHeader, forceReload );
-
-        if( Number(headerParts[1]) < Number(appParts[1]) )
-            return;
-
-        if( Number(headerParts[2]) > Number(appParts[2]) )
-            return this.handleNewerVersion( versionHeader, forceReload );
-
-    };
-
-    handleNewerVersion = ( version, force)=>{
-
-
-        console.log("Newer version detected");
-
-        /*
-        if( !this.newerVersion && window.swRegistration )
-            window.swRegistration.update()
-                .then(()=>{
-                    //This will broadcast the refresh message to all active tabs of the app through the sw
-                    if( force )
-                        window.navigator.serviceWorker.controller.postMessage('force_refresh');
-                });
-                */
-
-        this.newerVersion = version;
-        if( force && !window.swRegistration )
-            window.location.reload(  );
     };
 
 }
