@@ -25,7 +25,7 @@ The configuration should be an object which could contain the following properti
 
 | Property         |type       |    Default    | Description |
 |------------------|-----------|---------------|-------------|
-|appendHeaders     | function  | undefined     | A function to modify the headers of each request making it. It will receive the headers created as first argument and it should modify this same object. The headers are in a plain object. The returned value is ignored 
+|appendHeaders     | function  | undefined     | A function to modify the headers of each request. It will receive the headers created as first argument and it should modify this same object. The headers are in a plain object. The returned value is ignored 
 |commonPath        |string     | empty string  |The path to append to the `host` on each request. It could be already appended to the `host` property if you don't intend to overwrite it in any endpoint.
 |createHeaders     | function  | function      | The function to create the headers to send in each request. Called with the options sent to the `apiCall` in an object as first argument. This object is augmented with the boolean property `useFormData` which may have been forced with the `files` apiCall argument
 |credentials       | string    | "omit"        | Set the credentials parameter of the request. See [available options](https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials)
