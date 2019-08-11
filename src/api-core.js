@@ -12,7 +12,6 @@ import {
     STATE_ACTION_SEARCH_N_DELETE,
     STATE_ACTION_SEARCH_N_REPLACE,
     STATE_ACTION_SET,
-    STATE_ACTION_SET_SINGLE,
     QUEUED_RESPONSE,
 } from "./constants_api";
 
@@ -23,12 +22,13 @@ import LocalStorageState from "./utils/LocalStorageState";
 
 //Default initialization parameters
 const defaultConfig = {
+
     localStorageKey: 'api',
-    path : '',
-    queryStringOptions: { arrayFormat: 'brackets' }, // See https://github.com/ljharb/qs#stringifying for available options
-    queueInterval: 180000,// 3 minutes
-    saveTokenToLocalStorage: false,
-    tokenKey: 'googlead',
+    commonPath : '',
+    credentials: 'omit',
+
+    getDataFromResponse: ( resp )=>resp,
+    getMetaDataFromResponse: ()=>undefined,
 
     login: {
         path: 'login_check',
@@ -43,7 +43,17 @@ const defaultConfig = {
 
     logout: {
         path: 'logout'
-    }
+    },
+
+    nameToPath:  str =>str.split(/(?=[A-Z])/).join('_').toLowerCase(),
+    parseJson: true,
+    queryStringOptions: { arrayFormat: 'brackets' }, // See https://github.com/ljharb/qs#stringifying for available options
+    queueInterval: 180000,// 3 minutes
+    reduxStore: undefined,
+    saveTokenToLocalStorage: false,
+    strictMode: true,
+    tokenKey: 'tideApiToken',
+
 };
 
 export default class Api {
@@ -54,7 +64,7 @@ export default class Api {
         this.config = { ...defaultConfig, ...config };
 
         if( !this.config.host )
-            throw( "Missing required parameter 'host' to initialize API" );
+            throw( new Error("Missing required parameter 'host' to initialize API") );
         this.host = config.host;
 
         this.store = this.config.reduxStore;
@@ -80,6 +90,12 @@ export default class Api {
         return new Proxy( this, { get: this.getProperty } );
     }
 
+    /**
+     * Proxy method to mock each endpoint as if it were a property of the "api" object
+     *
+     * @param api The api object
+     * @param field The requested field, when someone try to access "api.users" this would be "users"
+     **/
     getProperty =  ( api, field )=>{
 
         if (field in api) return api[field]; // normal case
@@ -95,12 +111,17 @@ export default class Api {
 
         }
 
-        throw ("Endpoint '" + field + "' not defined in API");
+        //The field was not defined, in strictMode we throw an exception otherwise create an endpoint from the field
+        if( api.config.strictMode )
+            return undefined;
+            //throw ("Endpoint '" + field + "' not defined in API");
+        else
+            return this.handleEndpointCall( field );
     };
 
-    getInitialState(){
+    static getInitialState( localStorageKey = 'api' ){
 
-        const storage = new LocalStorageState( this.config.localStorageKey );
+        const storage = new LocalStorageState( localStorageKey );
         const oldState = storage.getState();
 
         if( oldState )
@@ -131,27 +152,7 @@ export default class Api {
 
                 if( response.status === 200 ){
 
-                    if( this.config.saveTokenToLocalStorage ){
-
-                        response.json().then((json)=>{
-
-                            this.token = json.token;
-                            if( window.localStorage ) window.localStorage[ this.config.tokenKey ] = this.token;
-
-                            if( this.store ) {
-                                this.store.dispatch({
-                                    type: ACTION_PREFIX + ACTION_LOG,
-                                    payload: {
-                                        state: LOGIN_STATE.LOGGED_IN,
-                                        storageKey: this.config.localStorageKey
-                                    }
-                                });
-                                this.store.dispatch({type: APP_LOADING_END});
-                            }
-                        })
-
-                    }
-                    else if( this.store ){
+                    if( this.store ) {
                         this.store.dispatch({
                             type: ACTION_PREFIX + ACTION_LOG,
                             payload: {
@@ -161,6 +162,19 @@ export default class Api {
                         });
                         this.store.dispatch({type: APP_LOADING_END});
                     }
+
+                    if( this.config.saveTokenToLocalStorage ){
+
+                        response.json().then((json)=>{
+
+                            this.token = json.token;
+                            if( window.localStorage ) window.localStorage[ this.config.tokenKey ] = this.token;
+
+                            return json;
+                        })
+
+                    }
+
                 }
                 else if( response.status === 401 ){
                     if( this.store ) {
@@ -174,11 +188,12 @@ export default class Api {
                         this.store.dispatch({type: APP_LOADING_END});
                     }
                 }
-                else {
-                    loginError();
+                else if( response.status >= 400 ){
+                    loginError( response );
                 }
 
                 return response;
+
             }, loginError);
 
         const that= this;
@@ -189,7 +204,7 @@ export default class Api {
                 that.store.dispatch({
                     type: ACTION_PREFIX + ACTION_LOG,
                     payload: {
-                        state: LOGIN_STATE.BAD_CREDENTIALS,
+                        state: LOGIN_STATE.LOGIN_ERROR,
                         storageKey: that.config.localStorageKey
                     }
                 });
@@ -215,6 +230,10 @@ export default class Api {
                     type: STATE_ACTION_CLEAR
                 })
             }
+
+            if( response.json )
+                return response.json();
+
             return response;
         };
 
@@ -222,21 +241,104 @@ export default class Api {
         fetch( url,{credentials: 'include'}).then(done,done);
     };
 
-    /*
-    lounges =
-        {
-            get: ( loadingId, filters, property )=> this.apiCall(ApiPaths.lounges, property?property:"lounges", {itemsPerPage:200, ...filters}, {loadingId, cacheable:true} ),
-            create: ( name, isWarehouse, property )=> this.apiCall( ApiPaths.lounges, property?property:"lounges", {name, isWarehouse}, {method:"POST", stateAction:STATE_ACTION_APPEND} ),
-            edit: ( id, name, property )=> this.apiCall( `${ApiPaths.lounges}/${id}`, property?property:"lounges", {id, name}, {method:"PUT", stateAction:STATE_ACTION_SEARCH_N_REPLACE} ),
-            delete: ( id, property )=> this.apiCall( `${ApiPaths.lounges}/${id}`, property?property:"lounges", {id}, {method:"DELETE", stateAction:STATE_ACTION_SEARCH_N_DELETE} )
-        };
-*/
     handleEndpointCall( endpoint ){
 
-        if( typeof endpoint === 'string' )
+        const endType = typeof endpoint;
+
+        if( endType !== "object" && endType !== "string" )
+            throw ("Endpoint definition should be an object or a string, got " + endType);
+
+        if( endType === 'string' )
             return {
-                create: function(){ console.log('create user') }
+                create: this.createCreateMethod( endpoint ),
+                get: this.createGetMethod( endpoint ),
+                update: this.createUpdateMethod( endpoint ),
+                delete: this.createDeleteMethod( endpoint ),
+            };
+
+        //Endpoint is an object
+
+        if( !endpoint.name || typeof endpoint.name !== "string" )
+            throw ("An endpoint definition of type object must have a \"name\" property of type string");
+
+        let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name );
+
+        if( endpoint.customMethods )
+            endpointObject = { ...endpointObject, ...endpoint.customMethods };
+
+        return endpointObject;
+
+    }
+
+    createGetMethod( endpoint ){
+
+        const _this = this;
+
+        if( typeof endpoint === 'string' )
+            return function( config = {} ){
+                const {params, customProp, ..._config} = config;
+                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, _config )
             }
+
+    }
+
+    createCreateMethod( endpoint ){
+
+        const _this = this;
+        const defaultPostConfig = {
+            method:'POST',
+            stateAction:STATE_ACTION_APPEND
+        };
+
+        if( typeof endpoint === 'string' )
+            return function( config = {} ){
+                const {params, files, customProp, ..._config} = config;
+                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+            }
+
+    }
+
+    createUpdateMethod( endpoint ){
+
+        const _this = this;
+        const defaultPostConfig = {
+            method:'PUT',
+            stateAction:STATE_ACTION_SEARCH_N_REPLACE
+        };
+
+        if( typeof endpoint === 'string' )
+            return function( config = {} ){
+                const objectId = config.id;
+
+                if( !objectId )
+                    throw (new Error("The update endpoint requires an id to be sent in the config object"));
+
+                const {params, files, customProp, ..._config} = config;
+                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+            }
+
+    }
+
+    createDeleteMethod( endpoint ){
+
+        const _this = this;
+        const defaultPostConfig = {
+            method:'DELETE',
+            stateAction:STATE_ACTION_SEARCH_N_DELETE
+        };
+
+        if( typeof endpoint === 'string' )
+            return function( config = {} ){
+
+                const objectId = config.id;
+
+                if( !objectId )
+                    throw (new Error("The delete endpoint requires an id to be sent in the config object"));
+
+                const {params, files, customProp, ..._config} = config;
+                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+            }
+
     }
 
     apiCall = ( path, property, params, config, files)=>
@@ -263,7 +365,13 @@ export default class Api {
                 const form_data = new FormData();
                 form_data.append("_method",method);
                 form_data.append("data",JSON.stringify(params));
-                if( files && files.constructor === Array ) {
+                if( files && files.constructor === File ) {
+                    if (files.name)
+                        form_data.append("file", files, files.name);
+                    else
+                        form_data.append("file", files);
+                }
+                else if( files && files.constructor === Array ) {
                     files.forEach((file) => {
                         if( file ) {
                             if (file.name)
@@ -275,7 +383,8 @@ export default class Api {
                 }
                 else if(files && typeof files === "object"){
                     for( const name in files ) {
-                        form_data.append(name, files[name]);
+                        if( typeof files[name] === 'object' && files[name].constructor === File )
+                            form_data.append(name, files[name]);
                     }
                 }
 
@@ -295,6 +404,8 @@ export default class Api {
 
         if( this.store )
             this.store.dispatch(loadingStartAction);
+
+        let responseHeaders;
 
         const successHandler = ( data )=>{
 
@@ -320,7 +431,8 @@ export default class Api {
                         method,
                         property,
                         params,
-                        ...data
+                        data: this.config.getDataFromResponse(data, headers),
+                        meta: this.config.getMetaDataFromResponse( data, headers )
                     }
 
                 });
@@ -331,7 +443,7 @@ export default class Api {
             if( config.cacheable )
                 this.cacheManager.saveToCache( data, path, params );
 
-            return data.data;
+            return data;
         };
 
         const errorHandler = ( response )=>{
@@ -388,8 +500,10 @@ export default class Api {
                 throw(response);
             }
 
-            if( response && response.headers )
-                this.responseHeadersHandler( response.headers );
+            if( response && response.headers ) {
+                responseHeaders = response.headers;
+                this.responseHeadersHandler(response.headers);
+            }
 
             if (response.status === 401) {
 
@@ -413,10 +527,11 @@ export default class Api {
             else if( response.status === 204 ){
                 return response;
             }
-            else if(response.json){
+            else if( this.config.parseJson && response.json){
                 return response.json()
             }
 
+            return response;
         };
 
         let headers= {"Accept": "application/json" };
@@ -425,16 +540,13 @@ export default class Api {
             headers["Authorization"] = "Bearer "+this.token;
         if(! useFormData )
             headers["Content-Type"]= "application/json";
-        if( window.localStorage.switchMe )
-            headers["x-view-analytics"]= window.localStorage.switchMe;
 
-        if( window.debugAPI )
-            console.log( 'API CALL', { path, method, headers, query, body } );
+        const url = urljoin( this.host, this.config.commonPath, path, query);
 
         return fetch(
-            this.host + path + query,
+            url,
             {
-                credentials: 'include',
+                credentials: config.credentials? config.credentials : this.config.credentials,
                 headers,
                 method,
                 body
