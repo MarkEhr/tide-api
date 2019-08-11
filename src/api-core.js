@@ -23,22 +23,31 @@ import LocalStorageState from "./utils/LocalStorageState";
 //Default initialization parameters
 const defaultConfig = {
 
-    localStorageKey: 'api',
     commonPath : '',
-    credentials: 'omit',
+    createHeaders: function(apiCallOptions){
+        let headers= {"Accept": "application/json" };
 
+        if( this.config.saveTokenToLocalStorage && this.token )
+            headers["Authorization"] = "Bearer "+this.token;
+        if(! apiCallOptions.useFormData )
+            headers["Content-Type"]= "application/json";
+        return headers;
+    },
+    credentials: 'omit',
     getDataFromResponse: ( resp )=>resp,
     getMetaDataFromResponse: ()=>undefined,
-
+    localStorageKey: 'api',
     login: {
         path: 'login_check',
         method: 'POST',
-        createBody: ( [username, password] )=>{
+        createBody: ( username, password )=>{
             let credentials = new FormData();
             credentials.append("_username", username );
             credentials.append("_password", password);
             return credentials;
-        }
+        },
+        parseJson: true,
+        tokenExtractor: ( json )=>json.token
     },
 
     logout: {
@@ -62,6 +71,8 @@ export default class Api {
     {
 
         this.config = { ...defaultConfig, ...config };
+        if( config && config.login )
+            this.config.login = {...defaultConfig.login, ...config.login};
 
         if( !this.config.host )
             throw( new Error("Missing required parameter 'host' to initialize API") );
@@ -96,7 +107,7 @@ export default class Api {
      * @param api The api object
      * @param field The requested field, when someone try to access "api.users" this would be "users"
      **/
-    getProperty =  ( api, field )=>{
+    getProperty=( api, field )=>{
 
         if (field in api) return api[field]; // normal case
 
@@ -130,87 +141,79 @@ export default class Api {
             return {};
     }
 
-    createUrl( resourcePath ){
-        return urljoin( this.host, this.config.path, resourcePath );
-    };
-
     login()
     {
-        const url = this.createUrl( this.config.login.path );
+        const url = urljoin( this.host, this.config.commonPath, this.config.login.path );
 
         if( this.store )
             this.store.dispatch({ type:APP_LOADING_START });
 
-        fetch(
-            url,
-            {
-                method: this.config.login.method,
-                body: this.config.login.createBody( arguments ),
-                credentials: 'include'
-            })
-            .then(( response)=>{
+        const loginError = (response)=>{
 
-                if( response.status === 200 ){
+            const newState = response && response.status === 401? LOGIN_STATE.BAD_CREDENTIALS : LOGIN_STATE.LOGIN_ERROR;
+            if (this.store) {
 
-                    if( this.store ) {
-                        this.store.dispatch({
-                            type: ACTION_PREFIX + ACTION_LOG,
-                            payload: {
-                                state: LOGIN_STATE.LOGGED_IN,
-                                storageKey: this.config.localStorageKey
-                            }
-                        });
-                        this.store.dispatch({type: APP_LOADING_END});
+                this.store.dispatch({
+                    type: ACTION_PREFIX + ACTION_LOG,
+                    payload: {
+                        state: newState,
+                        storageKey: this.config.localStorageKey
                     }
+                });
+                this.store.dispatch({type: APP_LOADING_END});
+            }
 
-                    if( this.config.saveTokenToLocalStorage ){
+            const loginError = new Error(newState);
+            loginError.response = response;
+            throw loginError;
+        };
 
-                        response.json().then((json)=>{
+        const loginSuccess = (response)=>{
 
-                            this.token = json.token;
-                            if( window.localStorage ) window.localStorage[ this.config.tokenKey ] = this.token;
+            if( response.status >= 400 )
+                return loginError(response);
 
-                            return json;
-                        })
+            if( response.status !== 200 )
+                return response;
 
-                    }
+            //response.status === 200
+            const finishLogin = (response)=>{
 
-                }
-                else if( response.status === 401 ){
-                    if( this.store ) {
-                        this.store.dispatch({
-                            type: ACTION_PREFIX + ACTION_LOG,
-                            payload: {
-                                state: LOGIN_STATE.BAD_CREDENTIALS,
-                                storageKey: this.config.localStorageKey
-                            }
-                        });
-                        this.store.dispatch({type: APP_LOADING_END});
-                    }
-                }
-                else if( response.status >= 400 ){
-                    loginError( response );
+                if(this.config.login && this.config.login.tokenExtractor)
+                    this.token = this.config.login.tokenExtractor.call(this, response);
+                if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
+                    window.localStorage[this.config.tokenKey] = this.token;
+
+                if( this.store ) {
+                    this.store.dispatch({
+                        type: ACTION_PREFIX + ACTION_LOG,
+                        payload: {
+                            state: LOGIN_STATE.LOGGED_IN,
+                            storageKey: this.config.localStorageKey
+                        }
+                    });
+                    this.store.dispatch({type: APP_LOADING_END});
                 }
 
                 return response;
+            };
 
-            }, loginError);
+            if( this.config.login && this.config.login.parseJson )
+                return response.json().then(finishLogin);
+            else
+                return finishLogin(response);
 
-        const that= this;
-        function loginError() {
+        };
 
-            if (that.store) {
+        return fetch(
+            url,
+            {
+                method: this.config.login.method,
+                body: this.config.login.createBody.call(this, ...arguments),
+                credentials: this.config.credentials
+            })
+            .then(loginSuccess, loginError);
 
-                that.store.dispatch({
-                    type: ACTION_PREFIX + ACTION_LOG,
-                    payload: {
-                        state: LOGIN_STATE.LOGIN_ERROR,
-                        storageKey: that.config.localStorageKey
-                    }
-                });
-                that.store.dispatch({type: APP_LOADING_END});
-            }
-        }
     };
 
     logout = ()=>
@@ -237,8 +240,8 @@ export default class Api {
             return response;
         };
 
-        const url = this.createUrl( this.config.logout.path );
-        fetch( url,{credentials: 'include'}).then(done,done);
+        const url =  urljoin( this.host, this.config.commonPath, this.config.logout.path );
+        return fetch( url,{credentials: 'include'}).then(done,done);
     };
 
     handleEndpointCall( endpoint ){
@@ -277,7 +280,7 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, _config )
+                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, _config )
             }
 
     }
@@ -343,6 +346,7 @@ export default class Api {
 
     apiCall = ( path, property, params, config, files)=>
     {
+        const apiCallOptions = {path, property, params, config, files};
 
         if( !config )
             config = {};
@@ -431,8 +435,8 @@ export default class Api {
                         method,
                         property,
                         params,
-                        data: this.config.getDataFromResponse(data, headers),
-                        meta: this.config.getMetaDataFromResponse( data, headers )
+                        data: this.config.getDataFromResponse.call(this, data, headers),
+                        meta: this.config.getMetaDataFromResponse.call(this, data, headers )
                     }
 
                 });
@@ -534,12 +538,10 @@ export default class Api {
             return response;
         };
 
-        let headers= {"Accept": "application/json" };
+        const headers = this.config.createHeaders.call(this, {...apiCallOptions, useFormData});
 
-        if( this.config.saveTokenToLocalStorage && this.token )
-            headers["Authorization"] = "Bearer "+this.token;
-        if(! useFormData )
-            headers["Content-Type"]= "application/json";
+        if(this.config.appendHeaders)
+            this.config.appendHeaders.call(this, headers);
 
         const url = urljoin( this.host, this.config.commonPath, path, query);
 

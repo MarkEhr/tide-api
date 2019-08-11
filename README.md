@@ -25,21 +25,24 @@ The configuration should be an object which could contain the following properti
 
 | Property         |type       |    Default    | Description |
 |------------------|-----------|---------------|-------------|
+|appendHeaders     | function  | undefined     | A function to modify the headers of each request making it. It will receive the headers created as first argument and it should modify this same object. The headers are in a plain object. The returned value is ignored 
+|commonPath        |string     | empty string  |The path to append to the `host` on each request. It could be already appended to the `host` property if you don't intend to overwrite it in any endpoint.
+|createHeaders     | function  | function      | The function to create the headers to send in each request. Called with the options sent to the `apiCall` in an object as first argument. This object is augmented with the boolean property `useFormData` which may have been forced with the `files` apiCall argument
 |credentials       | string    | "omit"        | Set the credentials parameter of the request. See [available options](https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials)
-|endpoints (required)|array    | -             |An array describing each endpoint, see next section for endpoints' properties
+|endpoints (required)|array    | -             |An array describing each endpoint, see [next section](#endpoint-configuration) for endpoints' properties
 |getDataFromResponse|function  |`(response)=>response`|Before storing the result to redux, this method will be called and its result will be stored. The default method returns the same data like: `( response, headers )=>response`
 |getMetaDataFromResponse|function|`()=>undefined`|To extract meta data from the response ( like page, total items, etc. ), then the returned object will be stored in redux with the key `{endpointName}Meta`. The method has the signature `(response, headers)=>object`
 |host (required)   |string     | -             |The url to which the  request will be done. It should contain the protocol.
 |localStorageKey   |string     | "api"         | The key to use in the local storage to save log-in state and cache data
+|login             |object     | <default login conf> | For login usage and configuration see [the login section](#login)
 |nameToPath        |function   | See description| A function to create the api path from the endpoint name. By default it converts from camel case to snake case. e.g. ( "personProfile" ) => "person_profile"
-|commonPath        |string     | empty string  |The path to append to the `host` on each request. It could be already appended to the `host` property if you don't intend to overwrite it in any endpoint.
 |parseJson         |boolean    | true          |If true and the server response has "content-type: json", the response will be parsed before resolving the api's promise
 |queryStringOptions|object     | { arrayFormat: 'brackets' } | Options for converting the request parameters to a GET query string. See [qs](https://github.com/ljharb/qs#stringifying) for available options.
-|queueInterval     |integer    | 180000        | Time in miliseconds between each try to resend a request when it is queued
+|queueInterval     |integer    | 180000        | Time in milliseconds between each try to resend a request when it is queued
 |reduxStore        |object     | undefined     |The redux store to dispatch endpoints actions. See [Redux](#Redux) to know how to use it
-|saveTokenToLocalStorage|boolean&#124;"safari" | false | Wether to save the authentication token to local storage or not. See [Why to do that](#Authentication tokens and local storage).
+|saveTokenToLocalStorage|boolean&#124;"safari" | false | Whether to save the authentication token to local storage or not. See [Why to do that](#authentication-tokens-and-local-storage).
 |strictMode        |boolean    | true          | If set to false, any endpoint could be called without defining it in the `endpoints` array. It will be called as if it were defined as a string.
-|tokenKey          |string     | "googlead"    | The key to use in the local storage to save the token
+|tokenKey          |string     | "tideApiToken"    | The key to use in the local storage to save the token
 
 ### Endpoint configuration
 
@@ -71,7 +74,7 @@ This endpoint will be a property of the api object, here's an example of how to 
      
 Like that you could use any of the methods automatically defined and a promise which resolves to the server response ( already parsed if it's a json ) will be returned.
 
-The default enpoints accept an `endpointArguments` object, which may have any of the following properties:
+The default endpoints accept an `endpointArguments` object, which may have any of the following properties:
 
 |name      | type      | description
 |----------|-----------|--------------
@@ -87,6 +90,28 @@ The default enpoints accept an `endpointArguments` object, which may have any of
 
 If you want to customize the endpoint's behavior you could send an object to change any part of the request made.
 
+### Login
+
+There's a default login implementation based on making a login request, saving the received token (if it's not saved as 
+a cookie already), and persisting it to the local storage.   
+To attempt a login just call the `login()` method of an api object, like:    
+
+```
+const api = new Api(apiConfig);
+api.login( user, password)
+```
+    
+Afterwards you can start to make other api calls and the login state should remain until expired o manually logged out.   
+The available login configuration that could be sent in the `login` key of the main config object is the following:
+
+|name      | type      | default           | description
+|----------|-----------|-------------------|------------
+|path      | string    |"login_check"      |The path to append to the url to make the login request
+|method    | string    |"POST"             |Http method to use in the request
+|createBody|function   |(username, password)=>FormData|The function to create the request body. This function receives the same arguments sent when calling `api.login()`. By default the function creates a `FormData` object appending the first argument with the key `_username` and the second argument as `_password`
+|parseJson|boolean    |true               |Whether to try to parse the response before returning the promise
+|tokenExtractor|function|(json)=>json.token|The function to extract the login token information from the response. If `parseJson` is set to `true`, this will receive the parsed response, otherwise it will receive the response object. It should return the token string 
+ 
 
 ### Authentication tokens and local storage
 
