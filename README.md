@@ -1,4 +1,4 @@
-#TIDE API
+# TIDE API
 
 Utility to easily consume a rest api in a browser javascript project.
 
