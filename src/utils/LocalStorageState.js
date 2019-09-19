@@ -27,7 +27,7 @@ export default class LocalStorageState {
 
     store( obj ){
         if( this.supported ){
-            Object.assign( this._state, obj);
+            this._state = {...this._state, ...obj};
             this.persist();
         }
         else

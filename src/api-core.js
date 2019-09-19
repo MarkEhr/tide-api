@@ -12,7 +12,7 @@ import {
     STATE_ACTION_SEARCH_N_DELETE,
     STATE_ACTION_SEARCH_N_REPLACE,
     STATE_ACTION_SET,
-    QUEUED_RESPONSE,
+    QUEUED_RESPONSE, ACTION_SET_STATE,
 } from "./constants_api";
 
 import { APP_LOADING_END, APP_LOADING_START} from "./actions/types";
@@ -27,16 +27,16 @@ const defaultConfig = {
     createHeaders: function(apiCallOptions){
         let headers= {"Accept": "application/json" };
 
-        if( this.config.saveTokenToLocalStorage && this.token )
+        if( this.token )
             headers["Authorization"] = "Bearer "+this.token;
-        if(! apiCallOptions.useFormData )
+        if(!apiCallOptions.useFormData)
             headers["Content-Type"]= "application/json";
         return headers;
     },
     credentials: 'omit',
     getDataFromResponse: ( resp )=>resp,
     getMetaDataFromResponse: ()=>undefined,
-    localStorageKey: 'api',
+    localStorageKey: 'tideApi',
     login: {
         path: 'login_check',
         method: 'POST',
@@ -51,7 +51,8 @@ const defaultConfig = {
     },
 
     logout: {
-        path: 'logout'
+        path: 'logout',
+        useCommonPath: false
     },
 
     nameToPath:  str =>str.split(/(?=[A-Z])/).join('_').toLowerCase(),
@@ -98,6 +99,16 @@ export default class Api {
             });
         }
 
+        const initialState = Api.getInitialState(this.config.localStorageKey);
+
+        if(initialState && this.store)
+            this.store.dispatch({
+                type: ACTION_PREFIX + ACTION_SET_STATE,
+                payload: {
+                    state: initialState,
+                }
+            });
+
         return new Proxy( this, { get: this.getProperty } );
     }
 
@@ -130,7 +141,7 @@ export default class Api {
             return this.handleEndpointCall( field );
     };
 
-    static getInitialState( localStorageKey = 'api' ){
+    static getInitialState( localStorageKey = 'tideApi' ){
 
         const storage = new LocalStorageState( localStorageKey );
         const oldState = storage.getState();
@@ -163,8 +174,13 @@ export default class Api {
                 this.store.dispatch({type: APP_LOADING_END});
             }
 
-            const loginError = new Error(newState);
-            loginError.response = response;
+            let loginError;
+            if(response instanceof Error)
+                loginError = response;
+            else {
+                loginError = new Error(newState);
+                loginError.response = response;
+            }
             throw loginError;
         };
 
@@ -240,7 +256,7 @@ export default class Api {
             return response;
         };
 
-        const url =  urljoin( this.host, this.config.commonPath, this.config.logout.path );
+        const url =  urljoin( this.host, this.config.useCommonPath? this.config.commonPath:'', this.config.logout.path );
         return fetch( url,{credentials: 'include'}).then(done,done);
     };
 
@@ -266,8 +282,14 @@ export default class Api {
 
         let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name );
 
-        if( endpoint.customMethods )
-            endpointObject = { ...endpointObject, ...endpoint.customMethods };
+        if( endpoint.customMethods ) {
+            let methods = {};
+            const that = this;
+            for( let name in endpoint.customMethods)
+                methods[name] = (...args)=>endpoint.customMethods[name].call(that, ...args);
+
+            endpointObject = {...endpointObject, ...methods};
+        }
 
         return endpointObject;
 
@@ -339,7 +361,7 @@ export default class Api {
                     throw (new Error("The delete endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {..._config, ...defaultPostConfig}, files )
             }
 
     }
@@ -360,7 +382,7 @@ export default class Api {
         let query = "?";
         let body = undefined;
 
-        if( params ) {
+        if( params || files ) {
 
             if (method === "GET" ) {
                 query += qs.stringify(params, this.config.queryStringOptions );
@@ -368,7 +390,8 @@ export default class Api {
             else if ( useFormData ){
                 const form_data = new FormData();
                 form_data.append("_method",method);
-                form_data.append("data",JSON.stringify(params));
+                if(params)
+                    form_data.append("data",JSON.stringify(params));
                 if( files && files.constructor === File ) {
                     if (files.name)
                         form_data.append("file", files, files.name);
@@ -425,6 +448,8 @@ export default class Api {
             if( !data )
                 return errorHandler("Empty response");
 
+            const extractedData = this.config.getDataFromResponse.call(this, data, responseHeaders);
+
             if( this.store ) {
 
                 this.store.dispatch({
@@ -435,8 +460,8 @@ export default class Api {
                         method,
                         property,
                         params,
-                        data: this.config.getDataFromResponse.call(this, data, headers),
-                        meta: this.config.getMetaDataFromResponse.call(this, data, headers )
+                        data: extractedData,
+                        meta: this.config.getMetaDataFromResponse.call(this, data, responseHeaders )
                     }
 
                 });
@@ -447,7 +472,7 @@ export default class Api {
             if( config.cacheable )
                 this.cacheManager.saveToCache( data, path, params );
 
-            return data;
+            return extractedData;
         };
 
         const errorHandler = ( response )=>{
@@ -470,11 +495,15 @@ export default class Api {
             ){
                 return response.json().then((json)=>{
                     //TODO: Handle json error
+                    if(this.config.onError)
+                        this.config.onError.call(this, json);
                     throw( json );
                 })
             }
             else{
                 //TODO: Handle error
+                if(this.config.onError)
+                    this.config.onError.call(this, response);
             }
 
             throw( response );
@@ -530,9 +559,12 @@ export default class Api {
             else if( response.status === 204 ){
                 return response;
             }
-            else if( this.config.parseJson && response.json){
-                return response.json()
-            }
+            else if(
+                this.config.parseJson &&
+                response.json &&
+                response.headers.get("Content-Type").split(";")[0] === "application/json"
+            )
+                return response.json();
 
             return response;
         };

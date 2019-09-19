@@ -1,6 +1,13 @@
 
 import dataReducer from './reducer_data';
-import {ACTION_PREFIX, initialState, ACTION_LOG, LOGIN_STATE, STATE_ACTION_CLEAR} from "../constants_api";
+import {
+    ACTION_PREFIX,
+    initialState,
+    ACTION_LOG,
+    LOGIN_STATE,
+    STATE_ACTION_CLEAR,
+    ACTION_SET_STATE
+} from "../constants_api";
 
 import LocalStorageState from "../utils/LocalStorageState";
 
@@ -14,11 +21,14 @@ export default function( state=initialState, action){
 
     const apiAction = action.type.substr(ACTION_PREFIX.length);
 
+    if (apiAction === ACTION_SET_STATE) {
+        return action.payload.state;
+    }
     if (apiAction === ACTION_LOG) {
 
         if( action.payload.state === LOGIN_STATE.LOGGED_IN || action.payload.state === LOGIN_STATE.NOT_LOGGED ) {
             let loc = new LocalStorageState( action.payload.storageKey );
-            loc.store({api: {loggedIn: action.payload.state }});
+            loc.store({loggedIn: action.payload.state });
         }
         return {...state, loggedIn: action.payload.state };
     } else {

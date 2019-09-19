@@ -1,9 +1,10 @@
 
-//Actions preffix
+//Actions prefix
 export const ACTION_PREFIX = "@API_";
 
 //Actions suffixes
 export const ACTION_LOG = "LOG_APP";
+export const ACTION_SET_STATE = "SET_STATE";//Set the whole state of the api in redux
 
 //This actions say how to save the obtained data to the store
 export const STATE_ACTION_APPEND = "APPEND";//Append to an array of items

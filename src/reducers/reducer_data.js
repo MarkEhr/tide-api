@@ -11,11 +11,7 @@ export default function dataReducer (state, action){
     const apiAction = action.type.substr(ACTION_PREFIX.length);
 
     if( apiAction === STATE_ACTION_CLEAR ) {
-        return (Object.assign(
-            {},
-            state,
-            { [result.property]: undefined }
-        ));
+        return {...state, [result.property]: undefined };
     }
 
     if( result && result.success ){
@@ -30,7 +26,7 @@ export default function dataReducer (state, action){
         }
 
         else if( apiAction === STATE_ACTION_SET_SINGLE ) {
-            newData = Object.assign({},result.data);
+            newData = {...result.data};
             if( result.data && result.data.id ){
                 newData[result.data.id] = result.data;
             }
@@ -42,7 +38,7 @@ export default function dataReducer (state, action){
             else if( data.constructor === Array )
                 newData = [...data, result.data];
             else if( typeof data === "object" )
-                newData = Object.assign( {}, data, result.data );
+                newData = { ...data, ...result.data };
         }
 
         else if( apiAction === STATE_ACTION_SEARCH_N_DELETE){
@@ -84,14 +80,7 @@ export default function dataReducer (state, action){
             return state;
 
 
-        return (Object.assign(
-            {},
-            state,
-            { [result.property]: newData,
-                [result.property+"Meta"]: meta }
-        ));
-
+        return {...state, [result.property]: newData, [result.property+"Meta"]: meta}
     }
-
     return state;
 }
