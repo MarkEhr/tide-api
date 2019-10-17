@@ -25,6 +25,8 @@ export const LOGIN_STATE = {
     LOGIN_ERROR: "LOGIN_ERROR",
 };
 
+export const LOGIN_LOADING_ID='@tide-api.login';
+
 export const initialState = {
     loggedIn: LOGIN_STATE.NOT_LOGGED,
 };

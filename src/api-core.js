@@ -12,7 +12,7 @@ import {
     STATE_ACTION_SEARCH_N_DELETE,
     STATE_ACTION_SEARCH_N_REPLACE,
     STATE_ACTION_SET,
-    QUEUED_RESPONSE, ACTION_SET_STATE,
+    QUEUED_RESPONSE, ACTION_SET_STATE, LOGIN_LOADING_ID,
 } from "./constants_api";
 
 import { APP_LOADING_END, APP_LOADING_START} from "./actions/types";
@@ -40,6 +40,7 @@ const defaultConfig = {
     login: {
         path: 'login_check',
         method: 'POST',
+        useCommonPath: true,
         createBody: ( username, password )=>{
             let credentials = new FormData();
             credentials.append("_username", username );
@@ -154,10 +155,14 @@ export default class Api {
 
     login()
     {
-        const url = urljoin( this.host, this.config.commonPath, this.config.login.path );
+        const url = urljoin(
+            this.host,
+            this.config.login.useCommonPath? this.config.commonPath :'',
+            this.config.login.path
+        );
 
         if( this.store )
-            this.store.dispatch({ type:APP_LOADING_START });
+            this.store.dispatch({ type:APP_LOADING_START, payload: {id:LOGIN_LOADING_ID} });
 
         const loginError = (response)=>{
 
@@ -171,7 +176,7 @@ export default class Api {
                         storageKey: this.config.localStorageKey
                     }
                 });
-                this.store.dispatch({type: APP_LOADING_END});
+                this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
             }
 
             let loginError;
@@ -195,21 +200,11 @@ export default class Api {
             //response.status === 200
             const finishLogin = (response)=>{
 
+                let token;
                 if(this.config.login && this.config.login.tokenExtractor)
-                    this.token = this.config.login.tokenExtractor.call(this, response);
-                if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
-                    window.localStorage[this.config.tokenKey] = this.token;
+                    token = this.config.login.tokenExtractor.call(this, response);
 
-                if( this.store ) {
-                    this.store.dispatch({
-                        type: ACTION_PREFIX + ACTION_LOG,
-                        payload: {
-                            state: LOGIN_STATE.LOGGED_IN,
-                            storageKey: this.config.localStorageKey
-                        }
-                    });
-                    this.store.dispatch({type: APP_LOADING_END});
-                }
+                this.setLoggedIn(token);
 
                 return response;
             };
@@ -232,6 +227,25 @@ export default class Api {
 
     };
 
+    setLoggedIn = (token)=>{
+
+        this.token = token;
+
+        if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
+            window.localStorage[this.config.tokenKey] = this.token;
+
+        if( this.store ) {
+            this.store.dispatch({
+                type: ACTION_PREFIX + ACTION_LOG,
+                payload: {
+                    state: LOGIN_STATE.LOGGED_IN,
+                    storageKey: this.config.localStorageKey
+                }
+            });
+            this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
+        }
+    };
+
     logout = ()=>
     {
 
@@ -250,7 +264,15 @@ export default class Api {
                 })
             }
 
-            if( response.json )
+            if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
+                delete window.localStorage[this.config.tokenKey];
+
+            if( this.config.parseJson &&
+                response &&
+                response.headers &&
+                response.headers.get("Content-Type") &&
+                response.headers.get("Content-Type").split(";")[0] === "application/json" )
+
                 return response.json();
 
             return response;
@@ -371,7 +393,10 @@ export default class Api {
         const apiCallOptions = {path, property, params, config, files};
 
         if( !config )
-            config = {};
+            config = {...this.config};
+        else
+            config={...this.config,...config};
+
         let method = config.method || "GET";
         const stateAction = config.stateAction || STATE_ACTION_SET;
         let useFormData = config.useFormData || false;
@@ -494,16 +519,15 @@ export default class Api {
                     response.headers.get("Content-Type").split(";")[0] === "application/json" )
             ){
                 return response.json().then((json)=>{
-                    //TODO: Handle json error
-                    if(this.config.onError)
-                        this.config.onError.call(this, json);
+                    if(config.onError)
+                        config.onError.call(this, json);
                     throw( json );
                 })
             }
             else{
                 //TODO: Handle error
-                if(this.config.onError)
-                    this.config.onError.call(this, response);
+                if(config.onError)
+                    config.onError.call(this, response);
             }
 
             throw( response );
@@ -560,7 +584,7 @@ export default class Api {
                 return response;
             }
             else if(
-                this.config.parseJson &&
+                config.parseJson &&
                 response.json &&
                 response.headers.get("Content-Type").split(";")[0] === "application/json"
             )
@@ -569,17 +593,17 @@ export default class Api {
             return response;
         };
 
-        const headers = this.config.createHeaders.call(this, {...apiCallOptions, useFormData});
+        const headers = config.createHeaders.call(this, {...apiCallOptions, useFormData});
 
-        if(this.config.appendHeaders)
-            this.config.appendHeaders.call(this, headers);
+        if(config.appendHeaders)
+            config.appendHeaders.call(this, headers);
 
-        const url = urljoin( this.host, this.config.commonPath, path, query);
+        const url = urljoin( this.host, config.useCommonPath===false?'':config.commonPath, path, query);
 
         return fetch(
             url,
             {
-                credentials: config.credentials? config.credentials : this.config.credentials,
+                credentials: config.credentials,
                 headers,
                 method,
                 body
