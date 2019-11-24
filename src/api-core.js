@@ -596,7 +596,7 @@ export default class Api {
         const headers = config.createHeaders.call(this, {...apiCallOptions, useFormData});
 
         if(config.appendHeaders)
-            config.appendHeaders.call(this, headers);
+            config.appendHeaders.call(this, headers, apiCallOptions);
 
         const url = urljoin( this.host, config.useCommonPath===false?'':config.commonPath, path, query);
 
