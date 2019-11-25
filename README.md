@@ -17,7 +17,7 @@ To start using the library you should create an `api` object with the basic conf
     
     const api = new API( config )
     
-    api.{endpointname}.read(); //Promise
+    api.{endpointname}.get(); //Promise
     
 ### Config parameters
 
@@ -50,7 +50,7 @@ The available endpoints in the api should be defined in the `endpoints` property
 
 ##### Define an endpoint as a string    
 
-If an endpoint from the `endpoints` array is a string, an automatic endpoint will be created with the following methods: `create`, `read`, `update` and `delete`.   
+If an endpoint from the `endpoints` array is a string, an automatic endpoint will be created with the following methods: `create`, `get`, `update` and `delete`.   
 This endpoint will be a property of the api object, here's an example of how to use it:   
       
     const api = new API( {
@@ -60,9 +60,9 @@ This endpoint will be a property of the api object, here's an example of how to 
         ]
     } );
     
-    console.log( api.users );//{ create: fn, read: fn, update: fn, delete: fn }
+    console.log( api.users );//{ create: fn, get: fn, update: fn, delete: fn }
     
-    api.users.read() // Promise
+    api.users.get() // Promise
         .then( users=>{
             //Use the users returned from the server
          })
@@ -79,7 +79,7 @@ The default endpoints accept an `endpointArguments` object, which may have any o
 |name      | type      | description
 |----------|-----------|--------------
 |params    | object    | Info to send to the server. How it is sent depends on the method, in GET requests are sent as query string, in all the other methods they're sent as a json in the request body.
-|method    | string    | The request method to use, the default depends on the endpoint type as follows, `read` -> "GET", `create` -> "POST", `update` -> "PUT", `delete` -> "DELETE"
+|method    | string    | The request method to use, the default depends on the endpoint type as follows, `get` -> "GET", `create` -> "POST", `update` -> "PUT", `delete` -> "DELETE"
 |credentials| string   | Overrides the `credentials` parameter of the request set in the global configuration.
 |customProp| string    | For redux integration. This changes the name with which the response will be saved to redux. By default it's the same as the endpoint's name
 |files     | object    | Files to append to the request. They are ignored if method is set to "GET". If set, the option `useFormData` is always set to true. It could be a `File` object in which case will be sent with the property name set to "file". It could be an `Array` in which case al files will be appended with a property name of "files[]". It could be and object where every file will be appended with a property name of the key inside the object that corresponds. ( objects are not recursively appended )
@@ -150,12 +150,12 @@ If `saveTokenToLocalStorage` is set to `true` the token will be sent as a header
  
  This would generate three properties in your state:
  - `api`: This is an object where all your endpoints' data will be saved. Each endpoint has its property, let's say you have an `users` endpoint,
- after the promise returned by `api.users.read()` is finished, the state would change and you could find in there the data returned by the server like:
+ after the promise returned by `api.users.get()` is finished, the state would change and you could find in there the data returned by the server like:
  `state.api.users` That would be an array with the users objects.
  - `loading`: this is an integer with the count of pending requests, this could be used for a global loading indicator. If it's zero, then nothing is loading,
  if it's anything other than zero, then there are some requests pending.
  - `loadingIds`: this is like the loading indicator but for individual endpoint calls. To use this you should send a `loadingId` string to an endpoint call like:    
- `api.users.read( {loadingId:"usersView"} )` after this there will appear this property in the redux state with the count of pending requests with this specific loadingId.
+ `api.users.get( {loadingId:"usersView"} )` after this there will appear this property in the redux state with the count of pending requests with this specific loadingId.
  So after that call and before the request is finished, you would find your state like this: `state.loadingIds.usersView // 1`.
  
  #### Redux state actions
