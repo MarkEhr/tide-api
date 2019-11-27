@@ -282,7 +282,7 @@ export default class Api {
         return fetch( url,{credentials: 'include'}).then(done,done);
     };
 
-    handleEndpointCall( endpoint ){
+    handleEndpointCall( endpoint, endpointConfig ){
 
         const endType = typeof endpoint;
 
@@ -291,10 +291,10 @@ export default class Api {
 
         if( endType === 'string' )
             return {
-                create: this.createCreateMethod( endpoint ),
-                get: this.createGetMethod( endpoint ),
-                update: this.createUpdateMethod( endpoint ),
-                delete: this.createDeleteMethod( endpoint ),
+                create: this.createCreateMethod( endpoint, endpointConfig ),
+                get: this.createGetMethod( endpoint, endpointConfig ),
+                update: this.createUpdateMethod( endpoint, endpointConfig ),
+                delete: this.createDeleteMethod( endpoint, endpointConfig ),
             };
 
         //Endpoint is an object
@@ -302,7 +302,7 @@ export default class Api {
         if( !endpoint.name || typeof endpoint.name !== "string" )
             throw ("An endpoint definition of type object must have a \"name\" property of type string");
 
-        let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name );
+        let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name, endpoint );
 
         if( endpoint.customMethods ) {
             let methods = {};
@@ -317,14 +317,14 @@ export default class Api {
 
     }
 
-    createGetMethod( endpoint ){
+    createGetMethod( endpoint, endpointConfig ){
 
         const _this = this;
 
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, _config )
+                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {...endpointConfig, ..._config} )
             }
 
     }
