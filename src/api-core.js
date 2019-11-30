@@ -7,7 +7,7 @@ import {
     ACTION_PREFIX,
     LOGIN_STATE,
     ACTION_LOG,
-    STATE_ACTION_APPEND,
+    STATE_ACTION_PREPEND,
     STATE_ACTION_CLEAR,
     STATE_ACTION_SEARCH_N_DELETE,
     STATE_ACTION_SEARCH_N_REPLACE,
@@ -334,7 +334,7 @@ export default class Api {
         const _this = this;
         const defaultPostConfig = {
             method:'POST',
-            stateAction:STATE_ACTION_APPEND
+            stateAction:STATE_ACTION_PREPEND
         };
 
         if( typeof endpoint === 'string' )

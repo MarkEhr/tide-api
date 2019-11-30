@@ -1,7 +1,11 @@
 import {
     ACTION_PREFIX, STATE_ACTION_SET,
-    STATE_ACTION_APPEND, STATE_ACTION_SEARCH_N_DELETE,
-    STATE_ACTION_SEARCH_N_REPLACE, STATE_ACTION_SET_SINGLE, STATE_ACTION_CLEAR
+    STATE_ACTION_APPEND,
+    STATE_ACTION_PREPEND,
+    STATE_ACTION_SEARCH_N_DELETE,
+    STATE_ACTION_SEARCH_N_REPLACE,
+    STATE_ACTION_SET_SINGLE,
+    STATE_ACTION_CLEAR
 }
     from "../constants_api";
 
@@ -39,6 +43,15 @@ export default function dataReducer (state, action){
                 newData = [...data, result.data];
             else if( typeof data === "object" )
                 newData = { ...data, ...result.data };
+        }
+
+        else if( apiAction === STATE_ACTION_PREPEND ) {
+            if (typeof data === "undefined")
+                newData = [result.data];
+            else if( data.constructor === Array )
+                newData = [result.data, ...data];
+            else if( typeof data === "object" )
+                newData = { ...result.data, ...data };
         }
 
         else if( apiAction === STATE_ACTION_SEARCH_N_DELETE){
