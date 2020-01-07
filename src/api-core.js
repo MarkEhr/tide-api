@@ -37,6 +37,7 @@ const defaultConfig = {
     getDataFromResponse: ( resp )=>resp,
     getMetaDataFromResponse: ()=>undefined,
     localStorageKey: 'tideApi',
+    initializeFromLocalStorage: true,
     login: {
         path: 'login_check',
         method: 'POST',
@@ -100,15 +101,17 @@ export default class Api {
             });
         }
 
-        const initialState = Api.getInitialState(this.config.localStorageKey);
+        if(this.config.initializeFromLocalStorage) {
+            const initialState = Api.getInitialState(this.config.localStorageKey);
 
-        if(initialState && this.store)
-            this.store.dispatch({
-                type: ACTION_PREFIX + ACTION_SET_STATE,
-                payload: {
-                    state: initialState,
-                }
-            });
+            if (initialState && this.store)
+                this.store.dispatch({
+                    type: ACTION_PREFIX + ACTION_SET_STATE,
+                    payload: {
+                        state: initialState,
+                    }
+                });
+        }
 
         return new Proxy( this, { get: this.getProperty } );
     }
@@ -205,6 +208,8 @@ export default class Api {
                     token = this.config.login.tokenExtractor.call(this, response);
 
                 this.setLoggedIn(token);
+                if( this.store )
+                    this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
 
                 return response;
             };
@@ -242,7 +247,6 @@ export default class Api {
                     storageKey: this.config.localStorageKey
                 }
             });
-            this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
         }
     };
 
