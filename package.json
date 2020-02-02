@@ -1,9 +1,11 @@
 {
     "name": "tide-api",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "description": "Utility intended to easily consume a rest api in javascript projects",
     "main": "dist/index.js",
-    "files": ["*"],
+    "files": [
+        "*"
+    ],
     "scripts": {
         "build": "webpack --mode production",
         "test": "jest"
