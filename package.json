@@ -1,42 +1,43 @@
 {
-  "name": "tide-api",
-  "version": "1.3.3",
-  "description": "Utility intended to easily consume a rest api in javascript projects",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "webpack --mode production",
-    "test": "jest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MarkEhr/tide-api.git"
-  },
-  "keywords": [
-    "api",
-    "rest",
-    "consumer"
-  ],
-  "author": "Mark Ehrlich",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/MarkEhr/tide-api/issues"
-  },
-  "homepage": "https://github.com/MarkEhr/tide-api#readme",
-  "devDependencies": {
-    "@babel/core": "^7.8.4",
-    "@babel/plugin-proposal-class-properties": "^7.8.3",
-    "@babel/preset-env": "^7.8.4",
-    "babel-loader": "^8.0.6",
-    "fetch-mock": "^7.7.3",
-    "jest": "^24.9.0",
-    "nock": "^10.0.6",
-    "node-fetch": "^2.6.0",
-    "webpack": "^4.41.5",
-    "webpack-cli": "^3.3.10"
-  },
-  "dependencies": {
-    "js-md5": "^0.7.3",
-    "qs": "^6.9.1",
-    "url-join": "^4.0.1"
-  }
+    "name": "tide-api",
+    "version": "1.3.3",
+    "description": "Utility intended to easily consume a rest api in javascript projects",
+    "main": "dist/index.js",
+    "files": ["*"],
+    "scripts": {
+        "build": "webpack --mode production",
+        "test": "jest"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/MarkEhr/tide-api.git"
+    },
+    "keywords": [
+        "api",
+        "rest",
+        "consumer"
+    ],
+    "author": "Mark Ehrlich",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/MarkEhr/tide-api/issues"
+    },
+    "homepage": "https://github.com/MarkEhr/tide-api#readme",
+    "devDependencies": {
+        "@babel/core": "^7.8.4",
+        "@babel/plugin-proposal-class-properties": "^7.8.3",
+        "@babel/preset-env": "^7.8.4",
+        "babel-loader": "^8.0.6",
+        "fetch-mock": "^7.7.3",
+        "jest": "^24.9.0",
+        "nock": "^10.0.6",
+        "node-fetch": "^2.6.0",
+        "webpack": "^4.41.5",
+        "webpack-cli": "^3.3.10"
+    },
+    "dependencies": {
+        "js-md5": "^0.7.3",
+        "qs": "^6.9.1",
+        "url-join": "^4.0.1"
+    }
 }
