@@ -9,6 +9,8 @@ export const ACTION_SET_STATE = "SET_STATE";//Set the whole state of the api in 
 //This actions say how to save the obtained data to the store
 export const STATE_ACTION_APPEND = "APPEND";//Append to an array of items
 export const STATE_ACTION_PREPEND = "PREPEND";//Append to an array of items
+export const STATE_ACTION_CONCAT = "CONCAT";//Concatenate an array to another array
+export const STATE_ACTION_PRE_CONCAT = "PRE_CONCAT";//Concatenate an array to another array. The new array at the beginning
 export const STATE_ACTION_SET = "SET";//Set the data in the response as the object in the state
 export const STATE_ACTION_SET_SINGLE = "SET_SINGLE";//Set the data in the response inside the state object with id as key
 export const STATE_ACTION_SEARCH_N_DELETE = "SEARCH_N_DELETE";//Search the object in an array in the store and remove it

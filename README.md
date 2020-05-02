@@ -4,9 +4,9 @@ Utility to easily consume a rest api in a browser javascript project.
 
 ### Getting started
 
-To start using the library you should create an `api` object with the basic config:
+To start using the library you should create an `api` object with the minimum config:
 
-    import API from 'tide-api';
+    import Api from 'tide-api';
     
     const config = {
                        host: "https://example.com",
@@ -15,9 +15,9 @@ To start using the library you should create an `api` object with the basic conf
                        ]
                    }
     
-    const api = new API( config )
+    const api = new Api( config )
     
-    api.{endpointname}.get(); //Promise
+    api.users.get(); //Promise resolves to the server's response of https://example.com/users
     
 ### Config parameters
 
@@ -26,19 +26,19 @@ The configuration should be an object which could contain the following properti
 | Property         |type       |    Default    | Description |
 |------------------|-----------|---------------|-------------|
 |appendHeaders     | function  | undefined     | A function to modify the headers of each request. It will receive the headers created as first argument and it should modify this same object. The headers are in a plain object. The returned value is ignored 
-|commonPath        |string     | empty string  |The path to append to the `host` on each request. It could be already appended to the `host` property if you don't intend to overwrite it in any endpoint.
-|createHeaders     | function  | function      | The function to create the headers to send in each request. Called with the options sent to the `apiCall` in an object as first argument. This object is augmented with the boolean property `useFormData` which may have been forced with the `files` apiCall argument
+|commonPath        |string     | empty string  | The path to append to the `host` on each request. Example: if you use the config object `{host:'http://example.com', commonPath:'api', endpoints:['users']}` calling the method `api.users.get()` would generate the url `http://example.com/api/users`
+|createHeaders     | function  | function      | The function to create the headers to send in each request. It is called with the options object sent to the `apiCall` as first argument. The options object contains an additional boolean property `useFormData` which may have been forced with the `files` parameter in an apiCall argument.
 |credentials       | string    | "omit"        | Set the credentials parameter of the request. See [available options](https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials)
-|endpoints (required)|array    | -             |An array describing each endpoint, see [next section](#endpoint-configuration) for endpoints' properties
+|endpoints (required)|array    | -             |An array describing each endpoint, see [next section](#endpoint-configuration) for endpoints' description format
 |getDataFromResponse|function  |`(response)=>response`|Before storing the result to redux, this method will be called and its result will be stored. The default method returns the same data like: `( response, headers )=>response`
 |getMetaDataFromResponse|function|`()=>undefined`|To extract meta data from the response ( like page, total items, etc. ), then the returned object will be stored in redux with the key `{endpointName}Meta`. The method has the signature `(response, headers)=>object`
 |host (required)   |string     | -             |The url to which the  request will be done. It should contain the protocol.
 |localStorageKey   |string     | "api"         | The key to use in the local storage to save log-in state and cache data
 |login             |object     | <default login conf> | For login usage and configuration see [the login section](#login)
-|nameToPath        |function   | See description| A function to create the api path from the endpoint name. By default it converts from camel case to snake case. e.g. ( "personProfile" ) => "person_profile"
-|parseJson         |boolean    | true          |If true and the server response has "content-type: json", the response will be parsed before resolving the api's promise
+|nameToPath        |function   | See description| A function to create the api path from the endpoint name given in the endpoint configuration. By default it converts from camel case to snake case. e.g. ( "personProfile" ) => "person_profile"
+|parseJson         |boolean    | true          | If true and the server response has "content-type: json", the response will be parsed before resolving the api's promise
 |queryStringOptions|object     | { arrayFormat: 'brackets' } | Options for converting the request parameters to a GET query string. See [qs](https://github.com/ljharb/qs#stringifying) for available options.
-|queueInterval     |integer    | 180000        | Time in milliseconds between each try to resend a request when it is queued
+|queueInterval     |integer    | 180000        | Time in milliseconds between each intent to resend a request when it is queued
 |reduxStore        |object     | undefined     |The redux store to dispatch endpoints actions. See [Redux](#Redux) to know how to use it
 |saveTokenToLocalStorage|boolean&#124;"safari" | false | Whether to save the authentication token to local storage or not. See [Why to do that](#authentication-tokens-and-local-storage).
 |strictMode        |boolean    | true          | If set to false, any endpoint could be called without defining it in the `endpoints` array. It will be called as if it were defined as a string.
@@ -86,9 +86,20 @@ The default endpoints accept an `endpointArguments` object, which may have any o
 |stateAction| string   | This says how to modify redux's state. See [redux section for available options](#Redux)
 |useFormData| boolean  | Default to false. If true, the params are sent with `FormData` formatting in the request body. This is ignored if the method is set to "GET". This is enforced if the `files` property is set.
 
+> Also any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single call.
+
 ##### Define an endpoint as an object
 
 If you want to customize the endpoint's behavior you could send an object to change any part of the request made.
+The object should have a `name` property which will be used to create the url as if it where a "string" defined endpoint.
+The endpoint object can have any of the following properties:
+
+| Property         |type       |    Default    | Description |
+|------------------|-----------|---------------|-------------|
+|customMethods     | object    | undefined     | An object of functions which will be merged to the endpoint object. e.g. using the definition `{name:'users', customMethod:{activate:function(){}}}` will make this method available as `api.users.activate()`
+|preventDefaultMethods|boolean | false         | If it's `true` a method denied as `{name:'users'}` will also have de default methods `get`, `create`, `update` and `delete`. Otherwise it will not have this methods available
+
+> Also any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single endpoint.
 
 ### Login
 

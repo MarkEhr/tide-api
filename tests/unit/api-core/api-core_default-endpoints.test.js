@@ -5,7 +5,10 @@ describe('An endpoint configured as a string should have basic methods', ()=>{
 
     const api = new ApiCore({
         host:'https://example.com',
-        endpoints: ['users']
+        endpoints: [
+            'users',
+            {name:'books'}
+        ]
     });
 
     //Created correctly
@@ -99,6 +102,15 @@ describe('An endpoint configured as a string should have basic methods', ()=>{
         api.users.delete({id:1});
     });
 
+
+    it('should define default methods for endpoints defined as objects', ()=>{
+
+        expect(typeof api.books ).toBe('object');
+        expect(typeof api.books.get ).toBe('function');
+        expect(typeof api.books.create ).toBe('function');
+        expect(typeof api.books.update ).toBe('function');
+        expect(typeof api.books.delete ).toBe('function');
+    });
 
 
     it('default strict mode should not let you call a random endpoint', ()=>{

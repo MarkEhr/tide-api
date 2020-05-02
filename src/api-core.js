@@ -4,14 +4,10 @@ import urljoin from 'url-join';
 
 //Local imports
 import {
-    ACTION_PREFIX,
-    LOGIN_STATE,
-    ACTION_LOG,
-    STATE_ACTION_PREPEND,
-    STATE_ACTION_CLEAR,
-    STATE_ACTION_SEARCH_N_DELETE,
-    STATE_ACTION_SEARCH_N_REPLACE,
-    STATE_ACTION_SET,
+    LOGIN_STATE, ACTION_LOG,
+    ACTION_PREFIX, STATE_ACTION_PREPEND,
+    STATE_ACTION_CLEAR, STATE_ACTION_SEARCH_N_DELETE,
+    STATE_ACTION_SEARCH_N_REPLACE, STATE_ACTION_SET,
     QUEUED_RESPONSE, ACTION_SET_STATE, LOGIN_LOADING_ID,
 } from "./constants_api";
 
@@ -124,7 +120,7 @@ export default class Api {
      **/
     getProperty=( api, field )=>{
 
-        if (field in api) return api[field]; // normal case
+        if (field in api) return api[field]; // normal case, accessing a real property of the api object
 
         for( const index in this.config.endpoints ){
 
@@ -309,12 +305,9 @@ export default class Api {
         let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name, endpoint );
 
         if( endpoint.customMethods ) {
-            let methods = {};
-            const that = this;
+            const _this = this;
             for( let name in endpoint.customMethods)
-                methods[name] = (...args)=>endpoint.customMethods[name].call(that, ...args);
-
-            endpointObject = {...endpointObject, ...methods};
+                endpointObject[name] = (...args)=>endpoint.customMethods[name].call(_this, ...args);
         }
 
         return endpointObject;
@@ -328,12 +321,12 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {...endpointConfig, ..._config} )
+                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {..._config, ...endpointConfig} )
             }
 
     }
 
-    createCreateMethod( endpoint ){
+    createCreateMethod( endpoint, endpointConfig ){
 
         const _this = this;
         const defaultPostConfig = {
@@ -344,15 +337,15 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {...defaultPostConfig, ..._config, ...endpointConfig}, files )
             }
 
     }
 
-    createUpdateMethod( endpoint ){
+    createUpdateMethod( endpoint, endpointConfig ){
 
         const _this = this;
-        const defaultPostConfig = {
+        const defaultPutConfig = {
             method:'PUT',
             stateAction:STATE_ACTION_SEARCH_N_REPLACE
         };
@@ -365,15 +358,15 @@ export default class Api {
                     throw (new Error("The update endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {..._config, ...defaultPostConfig}, files )
+                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {...defaultPutConfig, ..._config, ...endpointConfig}, files )
             }
 
     }
 
-    createDeleteMethod( endpoint ){
+    createDeleteMethod( endpoint, endpointConfig ){
 
         const _this = this;
-        const defaultPostConfig = {
+        const defaultDeleteConfig = {
             method:'DELETE',
             stateAction:STATE_ACTION_SEARCH_N_DELETE
         };
@@ -387,7 +380,7 @@ export default class Api {
                     throw (new Error("The delete endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {..._config, ...defaultPostConfig}, files )
+                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {...defaultDeleteConfig, ..._config, ...endpointConfig}, files )
             }
 
     }
@@ -477,7 +470,7 @@ export default class Api {
             if( !data )
                 return errorHandler("Empty response");
 
-            const extractedData = this.config.getDataFromResponse.call(this, data, responseHeaders);
+            const extractedData = config.getDataFromResponse.call(this, data, responseHeaders);
 
             if( this.store ) {
 
@@ -490,7 +483,7 @@ export default class Api {
                         property,
                         params,
                         data: extractedData,
-                        meta: this.config.getMetaDataFromResponse.call(this, data, responseHeaders )
+                        meta: config.getMetaDataFromResponse.call(this, data, responseHeaders )
                     }
 
                 });
@@ -572,7 +565,7 @@ export default class Api {
                         type: ACTION_PREFIX + ACTION_LOG,
                         payload: {
                             state: LOGIN_STATE.NOT_LOGGED,
-                            storageKey: this.config.localStorageKey
+                            storageKey: config.localStorageKey
                         }
 
                     });

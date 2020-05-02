@@ -5,7 +5,7 @@ import {
     STATE_ACTION_SEARCH_N_DELETE,
     STATE_ACTION_SEARCH_N_REPLACE,
     STATE_ACTION_SET_SINGLE,
-    STATE_ACTION_CLEAR
+    STATE_ACTION_CLEAR, STATE_ACTION_CONCAT, STATE_ACTION_PRE_CONCAT
 }
     from "../constants_api";
 
@@ -52,6 +52,24 @@ export default function dataReducer (state, action){
                 newData = [result.data, ...data];
             else if( typeof data === "object" )
                 newData = { ...result.data, ...data };
+        }
+
+        else if( apiAction === STATE_ACTION_CONCAT ) {
+            if (typeof data === "undefined")
+                newData = result.data;
+            else if (data.constructor === Array)
+                newData = [...data, ...result.data];
+            else if( typeof data === "object" )
+                newData = { ...data, ...result.data };
+        }
+
+        else if( apiAction === STATE_ACTION_PRE_CONCAT ) {
+            if (typeof data === "undefined")
+                newData = result.data;
+            else if (data.constructor === Array)
+                newData = [...result.data, ...data];
+            else if( typeof data === "object" )
+                newData = {...result.data, ...data};
         }
 
         else if( apiAction === STATE_ACTION_SEARCH_N_DELETE){
