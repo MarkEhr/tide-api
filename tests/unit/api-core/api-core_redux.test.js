@@ -70,7 +70,7 @@ describe( 'Api should make use of redux store', ()=> {
 
         return api.users.get().then( ()=> {
             api.clearProperty('users');
-            expect(store.getState().api.users).toEqual(undefined);
+            expect(api.store.getState().api.users).toEqual(undefined);
         });
 
     });
