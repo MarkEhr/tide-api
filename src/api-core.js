@@ -321,7 +321,7 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {..._config, ...endpointConfig} )
+                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {...endpointConfig, ..._config} )
             }
 
     }
@@ -337,7 +337,7 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {...defaultPostConfig, ..._config, ...endpointConfig}, files )
+                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {...defaultPostConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
@@ -358,7 +358,7 @@ export default class Api {
                     throw (new Error("The update endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {...defaultPutConfig, ..._config, ...endpointConfig}, files )
+                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {...defaultPutConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
@@ -380,7 +380,7 @@ export default class Api {
                     throw (new Error("The delete endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {...defaultDeleteConfig, ..._config, ...endpointConfig}, files )
+                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {...defaultDeleteConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
