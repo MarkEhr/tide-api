@@ -15,7 +15,7 @@ export default function dataReducer (state, action){
     const apiAction = action.type.substr(ACTION_PREFIX.length);
 
     if( apiAction === STATE_ACTION_CLEAR ) {
-        return {...state, [result.property]: undefined };
+        return {...state, [result.property]: undefined, [result.property+"Meta"]:undefined };
     }
 
     if( result && result.success ){
