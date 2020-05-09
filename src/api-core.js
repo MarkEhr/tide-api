@@ -432,8 +432,13 @@ export default class Api {
                 }
                 else if(files && typeof files === "object"){
                     for( const name in files ) {
-                        if( typeof files[name] === 'object' && files[name].constructor === File )
+                        if(files[name] instanceof Array){
+                            for(let i=0; i<files[name].length; i++){
+                                form_data.append(name+"["+i+"]", files[name][i]);
+                            }
+                        }else{
                             form_data.append(name, files[name]);
+                        }
                     }
                 }
 
