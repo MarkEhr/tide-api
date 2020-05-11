@@ -76,6 +76,7 @@ export default class Api {
         if( !this.config.host )
             throw( new Error("Missing required parameter 'host' to initialize API") );
         this.host = config.host;
+        this.token = null;
 
         this.store = this.config.reduxStore;
 
@@ -109,8 +110,30 @@ export default class Api {
                 });
         }
 
-        return new Proxy( this, { get: this.getProperty } );
+        if(typeof Proxy === 'undefined')
+            return this.createRealEndpoints();
+        else
+            return new Proxy( this, { get: this.getProperty } );
     }
+
+    /**
+     * This method is only call if the roxy feature is not available like in ie 11
+     *
+     * @returns {{get: ((function(*=): Promise<*>)|undefined), create: ((function(*=): Promise<*>)|undefined), update: ((function(*=): Promise<*>)|undefined), delete: ((function(*=): Promise<*>)|undefined)}|{}|{get: ((function(*=): Promise<*>)|undefined), create: ((function(*=): Promise<*>)|undefined), update: ((function(*=): Promise<*>)|undefined), delete: ((function(*=): Promise<*>)|undefined)}}
+     */
+    createRealEndpoints=()=>{
+
+        for( const index in this.config.endpoints ){
+
+            const endpoint = this.config.endpoints[ index ];
+            if(  typeof endpoint === "string")
+                this[endpoint] = this.handleEndpointCall( endpoint );
+
+            else if( typeof endpoint === "object")
+                this[endpoint.name] = this.handleEndpointCall( endpoint );
+        }
+        return this;
+    };
 
     /**
      * Proxy method to mock each endpoint as if it were a property of the "api" object
