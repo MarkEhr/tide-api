@@ -45,7 +45,8 @@ const defaultConfig = {
             return credentials;
         },
         parseJson: true,
-        tokenExtractor: ( json )=>json.token
+        tokenExtractor: ( json )=>json.token,
+        getHeaders: null
     },
 
     logout: {
@@ -240,13 +241,16 @@ export default class Api {
 
         };
 
-        return fetch(
-            url,
-            {
-                method: this.config.login.method,
-                body: this.config.login.createBody.call(this, ...arguments),
-                credentials: this.config.credentials
-            })
+        const fetchOptions = {
+            method: this.config.login.method,
+            body: this.config.login.createBody.call(this, ...arguments),
+            credentials: this.config.credentials
+        };
+
+        if(this.config.login.getHeaders)
+            fetchOptions.headers = this.config.login.getHeaders.call(this);
+
+        return fetch(url, fetchOptions)
             .then(loginSuccess, loginError);
 
     };
