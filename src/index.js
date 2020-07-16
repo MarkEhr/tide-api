@@ -1,3 +1,4 @@
+import 'whatwg-fetch';
 import apiCore from './api-core';
 import {
     ACTION_PREFIX, STATE_ACTION_SET, STATE_ACTION_APPEND,
