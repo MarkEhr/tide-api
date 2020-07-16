@@ -1,6 +1,6 @@
 {
     "name": "tide-api",
-    "version": "1.4.6",
+    "version": "1.4.7",
     "description": "Utility intended to easily consume a rest api in javascript projects",
     "main": "dist/index.js",
     "files": [
