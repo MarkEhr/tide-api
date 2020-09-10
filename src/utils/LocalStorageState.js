@@ -3,17 +3,18 @@ export default class LocalStorageState {
 
     supported = false;
 
-    constructor( key = 'state' ){
+    constructor( key = 'state', useSessionStorage = false ){
 
         this.key = key;
 
-        if( window.localStorage ) {
+        this.storage = useSessionStorage? window.sessionStorage : window.localStorage;
+        if( this.storage ) {
             this.supported = true;
-            if( !window.localStorage[ this.key] )
+            if( !this.storage.getItem(this.key) )
                 this._state = {};
             else {
                 try {
-                    this._state = JSON.parse(window.localStorage[ this.key ] );
+                    this._state = JSON.parse(this.storage.getItem(this.key) );
                 }
                 catch(error){
                     this._state = {};
@@ -44,7 +45,7 @@ export default class LocalStorageState {
     }
 
     persist(){
-        window.localStorage[ this.key ] = JSON.stringify( this._state );
+        this.storage.setItem(this.key, JSON.stringify( this._state ));
     }
 
 }

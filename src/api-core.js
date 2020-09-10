@@ -62,6 +62,7 @@ const defaultConfig = {
     saveTokenToLocalStorage: false,
     strictMode: true,
     tokenKey: 'tideApiToken',
+    useSessionStorage: false
 
 };
 
@@ -84,8 +85,8 @@ export default class Api {
         if( this.config.saveTokenToLocalStorage === 'safari' && !navigator.userAgent.match(/Version\/[\d.]+.*Safari/) )
             this.config.saveTokenToLocalStorage = false;
 
-        if( this.config.saveTokenToLocalStorage && window.localStorage && window.localStorage[ this.config.tokenKey ] )
-            this.token = window.localStorage[ this.config.tokenKey ];
+        if( this.config.saveTokenToLocalStorage && this.storageAvailable() && this.storageGet(this.config.tokenKey) )
+            this.token = this.storageGet(this.config.tokenKey);
 
         this.cacheManager = new CacheManager( config.tokenKey );
 
@@ -100,7 +101,7 @@ export default class Api {
         }
 
         if(this.config.initializeFromLocalStorage) {
-            const initialState = Api.getInitialState(this.config.localStorageKey);
+            const initialState = Api.getInitialState(this.config.localStorageKey, this.config.useSessionStorage);
 
             if (initialState && this.store)
                 this.store.dispatch({
@@ -165,9 +166,9 @@ export default class Api {
             return this.handleEndpointCall( field );
     };
 
-    static getInitialState( localStorageKey = 'tideApi' ){
+    static getInitialState( localStorageKey = 'tideApi', useSessionStorage ){
 
-        const storage = new LocalStorageState( localStorageKey );
+        const storage = new LocalStorageState(localStorageKey, useSessionStorage);
         const oldState = storage.getState();
 
         if( oldState )
@@ -196,7 +197,8 @@ export default class Api {
                     type: ACTION_PREFIX + ACTION_LOG,
                     payload: {
                         state: newState,
-                        storageKey: this.config.localStorageKey
+                        storageKey: this.config.localStorageKey,
+                        useSessionStorage: this.config.useSessionStorage
                     }
                 });
                 this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
@@ -259,15 +261,16 @@ export default class Api {
 
         this.token = token;
 
-        if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
-            window.localStorage[this.config.tokenKey] = this.token;
+        if( this.config.saveTokenToLocalStorage && this.token && this.storageAvailable())
+            this.storageSet(this.config.tokenKey, this.token);
 
         if( this.store ) {
             this.store.dispatch({
                 type: ACTION_PREFIX + ACTION_LOG,
                 payload: {
                     state: LOGIN_STATE.LOGGED_IN,
-                    storageKey: this.config.localStorageKey
+                    storageKey: this.config.localStorageKey,
+                    useSessionStorage: this.config.useSessionStorage
                 }
             });
         }
@@ -283,7 +286,8 @@ export default class Api {
                     type: ACTION_PREFIX + ACTION_LOG,
                     payload: {
                         state: LOGIN_STATE.NOT_LOGGED,
-                        storageKey: this.config.localStorageKey
+                        storageKey: this.config.localStorageKey,
+                        useSessionStorage: this.config.useSessionStorage
                     }
                 });
                 this.store.dispatch({
@@ -291,8 +295,8 @@ export default class Api {
                 })
             }
 
-            if( this.config.saveTokenToLocalStorage && this.token && window.localStorage)
-                delete window.localStorage[this.config.tokenKey];
+            if( this.config.saveTokenToLocalStorage && this.token && this.storageAvailable())
+                delete this.storageDelete(this.config.tokenKey);
 
             if( this.config.parseJson &&
                 response &&
@@ -597,7 +601,8 @@ export default class Api {
                         type: ACTION_PREFIX + ACTION_LOG,
                         payload: {
                             state: LOGIN_STATE.NOT_LOGGED,
-                            storageKey: config.localStorageKey
+                            storageKey: config.localStorageKey,
+                            useSessionStorage: this.config.useSessionStorage
                         }
 
                     });
@@ -651,5 +656,26 @@ export default class Api {
                 payload: {property}
             })
     };
+
+    storageGet = (key)=>
+    {
+        const storage = this.config.useSessionStorage? window.sessionStorage : window.localStorage;
+        return storage.getItem(key);
+    }
+    storageSet = (key, value)=>
+    {
+        const storage = this.config.useSessionStorage? window.sessionStorage : window.localStorage;
+        return storage.setItem(key, value);
+    }
+    storageDelete = (key)=>
+    {
+        const storage = this.config.useSessionStorage? window.sessionStorage : window.localStorage;
+        return storage.removeItem(key);
+    }
+    storageAvailable = ()=>
+    {
+        const storage = this.config.useSessionStorage? window.sessionStorage : window.localStorage;
+        return !!(storage);
+    }
 
 }

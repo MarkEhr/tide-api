@@ -43,6 +43,7 @@ The configuration should be an object which could contain the following properti
 |saveTokenToLocalStorage|boolean&#124;"safari" | false | Whether to save the authentication token to local storage or not. See [Why to do that](#authentication-tokens-and-local-storage).
 |strictMode        |boolean    | true          | If set to false, any endpoint could be called without defining it in the `endpoints` array. It will be called as if it were defined as a string.
 |tokenKey          |string     | "tideApiToken"    | The key to use in the local storage to save the token
+|useSessionStorage |boolean    | false         | If false the default storage will be localStorage if true it will be sessionStorage. The use of sessionStorage in combination with saveTokenToLocalStorage will create more secure ephemeral sessions which disappears when the tab is closed
 
 ### Endpoint configuration
 
@@ -104,7 +105,7 @@ The endpoint object can have any of the following properties:
 ### Login
 
 There's a default login implementation based on making a login request, saving the received token (if it's not saved as 
-a cookie already), and persisting it to the local storage.   
+a cookie already), and persisting it to the local storage (or session storage if `useSessionStorage` is set).   
 To attempt a login just call the `login()` method of an api object, like:    
 
 ```
@@ -112,7 +113,7 @@ const api = new Api(apiConfig);
 api.login( user, password)
 ```
     
-Afterwards you can start to make other api calls and the login state should remain until expired o manually logged out.   
+Afterwards you can start to make other api calls, and the login state should remain until expired o manually logged out.   
 The available login configuration that could be sent in the `login` key of the main config object is the following:
 
 |name      | type      | default           | description

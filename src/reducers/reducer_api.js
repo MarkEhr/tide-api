@@ -27,7 +27,7 @@ export default function( state=initialState, action){
     if (apiAction === ACTION_LOG) {
 
         if( action.payload.state === LOGIN_STATE.LOGGED_IN || action.payload.state === LOGIN_STATE.NOT_LOGGED ) {
-            let loc = new LocalStorageState( action.payload.storageKey );
+            let loc = new LocalStorageState( action.payload.storageKey, action.payload.useSessionStorage );
             loc.store({loggedIn: action.payload.state });
         }
         return {...state, loggedIn: action.payload.state };
