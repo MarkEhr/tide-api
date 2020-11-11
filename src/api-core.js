@@ -553,14 +553,14 @@ export default class Api {
             ){
                 return response.json().then((json)=>{
                     if(config.onError)
-                        config.onError.call(this, json);
+                        config.onError.call(this, json, apiCallOptions);
                     throw( json );
                 })
             }
             else{
                 //TODO: Handle error
                 if(config.onError)
-                    config.onError.call(this, response);
+                    config.onError.call(this, response, apiCallOptions);
             }
 
             throw( response );
