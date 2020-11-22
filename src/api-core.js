@@ -543,9 +543,6 @@ export default class Api {
             if( this.store )
                 this.store.dispatch(loadingEndAction);
 
-            if( response && response.status === 401 )
-                return;
-
             if( response && response.headers &&
                 response.headers.get("Content-Type") && (
                     response.headers.get("Content-Type").split(";")[0] === "application/problem+json" ||
