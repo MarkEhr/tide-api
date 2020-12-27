@@ -351,8 +351,13 @@ export default class Api {
 
         if( typeof endpoint === 'string' )
             return function( config = {} ){
-                const {params, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath.call(this, endpoint ), customProp || endpoint, params, {...endpointConfig, ..._config} )
+                const {params, customProp, id, ..._config} = config;
+                //Generate path
+                let url = _this.config.nameToPath.call(this, endpoint );
+                //If the parameter "id" is sent, we append it to the end of the path
+                if(id) url = urljoin(url, id);
+                //Call api
+                return _this.apiCall( url, customProp || endpoint, params, {...endpointConfig, ..._config} )
             }
 
     }

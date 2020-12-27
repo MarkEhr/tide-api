@@ -47,7 +47,7 @@ The configuration should be an object which could contain the following properti
 
 ### Endpoint configuration
 
-The available endpoints in the api should be defined in the `endpoints` property of the main config object. An endpoint could be defined in two ways:    
+The available endpoints in the api should be defined in the `endpoints` property of the main config object. An endpoint can be defined in two ways:    
 
 ##### Define an endpoint as a string    
 
@@ -79,15 +79,16 @@ The default endpoints accept an `endpointArguments` object, which may have any o
 
 |name      | type      | description
 |----------|-----------|--------------
-|params    | object    | Info to send to the server. How it is sent depends on the method, in GET requests are sent as query string, in all the other methods they're sent as a json in the request body.
-|method    | string    | The request method to use, the default depends on the endpoint type as follows, `get` -> "GET", `create` -> "POST", `update` -> "PUT", `delete` -> "DELETE"
 |credentials| string   | Overrides the `credentials` parameter of the request set in the global configuration.
 |customProp| string    | For redux integration. This changes the name with which the response will be saved to redux. By default it's the same as the endpoint's name
 |files     | object    | Files to append to the request. They are ignored if method is set to "GET". If set, the option `useFormData` is always set to true. It could be a `File` object in which case will be sent with the property name set to "file". It could be an `Array` in which case al files will be appended with a property name of "files[]". It could be and object where every file will be appended with a property name of the key inside the object that corresponds. ( objects are not recursively appended )
+|id        | string    | The methods `get`, `update` and `delete` can receive an id which will be appended to the end of the url to call. e.g.( `api.users.delete({id:30})` would make a `DELETE` call to the endpoint `/api/users/30`. The id is mandatory for the `update` and `delete` methods. 
+|method    | string    | The request method to use, the default depends on the endpoint type as follows, `get` -> "GET", `create` -> "POST", `update` -> "PUT", `delete` -> "DELETE"
+|params    | object    | Info to send to the server. In GET requests, `params` are sent as query string, in all the other methods they're sent as a json in the request body.
 |stateAction| string   | This says how to modify redux's state. See [redux section for available options](#Redux)
 |useFormData| boolean  | Default to false. If true, the params are sent with `FormData` formatting in the request body. This is ignored if the method is set to "GET". This is enforced if the `files` property is set.
 
-> Also any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single call.
+> Also, any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single call.
 
 ##### Define an endpoint as an object
 
@@ -100,7 +101,7 @@ The endpoint object can have any of the following properties:
 |customMethods     | object    | undefined     | An object of functions which will be merged to the endpoint object. e.g. using the definition `{name:'users', customMethod:{activate:function(){}}}` will make this method available as `api.users.activate()`
 |preventDefaultMethods|boolean | false         | If it's `true` a method denied as `{name:'users'}` will also have de default methods `get`, `create`, `update` and `delete`. Otherwise it will not have this methods available
 
-> Also any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single endpoint.
+> Also, any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single endpoint.
 
 ### Login
 
