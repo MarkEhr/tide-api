@@ -475,7 +475,7 @@ export default class Api {
                                 form_data.append(name+"["+i+"]", files[name][i]);
                             }
                         }else{
-                            form_data.append(name, files[name]);
+                            form_data.append(name, files[name], files[name].filename);
                         }
                     }
                 }
