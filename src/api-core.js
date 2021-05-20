@@ -320,25 +320,27 @@ export default class Api {
         if( endType !== "object" && endType !== "string" )
             throw ("Endpoint definition should be an object or a string, got " + endType);
 
-        if( endType === 'string' )
-            return {
-                create: this.createCreateMethod( endpoint, endpointConfig ),
-                get: this.createGetMethod( endpoint, endpointConfig ),
-                update: this.createUpdateMethod( endpoint, endpointConfig ),
-                delete: this.createDeleteMethod( endpoint, endpointConfig ),
+        let endpointObject;
+
+        if( endType === 'string' ) {
+            endpointObject =  {
+                create: this.createCreateMethod(endpoint, endpointConfig),
+                get: this.createGetMethod(endpoint, endpointConfig),
+                update: this.createUpdateMethod(endpoint, endpointConfig),
+                delete: this.createDeleteMethod(endpoint, endpointConfig),
             };
+        }
+        else {//Endpoint is an object
+            if (!endpoint.name || typeof endpoint.name !== "string")
+                throw ("An endpoint definition of type object must have a \"name\" property of type string");
 
-        //Endpoint is an object
+            endpointObject = endpoint.preventDefaultMethods ? {} : this.handleEndpointCall(endpoint.name, endpoint);
 
-        if( !endpoint.name || typeof endpoint.name !== "string" )
-            throw ("An endpoint definition of type object must have a \"name\" property of type string");
-
-        let endpointObject = endpoint.preventDefaultMethods? {}: this.handleEndpointCall( endpoint.name, endpoint );
-
-        if( endpoint.customMethods ) {
-            const _this = this;
-            for( let name in endpoint.customMethods)
-                endpointObject[name] = (...args)=>endpoint.customMethods[name].call(_this, ...args);
+            if (endpoint.customMethods) {
+                const _this = this;
+                for (let name in endpoint.customMethods)
+                    endpointObject[name] = (...args) => endpoint.customMethods[name].call(_this, ...args);
+            }
         }
 
         return endpointObject;
