@@ -62,7 +62,8 @@ const defaultConfig = {
     saveTokenToLocalStorage: false,
     strictMode: true,
     tokenKey: 'tideApiToken',
-    useSessionStorage: false
+    useSessionStorage: false,
+    handleUnknownMethods: false,
 
 };
 
@@ -318,12 +319,15 @@ export default class Api {
         const endType = typeof endpoint;
 
         if( endType !== "object" && endType !== "string" )
-            throw ("Endpoint definition should be an object or a string, got " + endType);
+            throw new Error("Endpoint definition should be an object or a string, got " + endType);
 
         let endpointObject;
 
+        let endpointName;
         if( endType === 'string' ) {
+            endpointName = endpoint;
             endpointObject =  {
+                custom: this.createCustomMethod(endpoint, endpointConfig),
                 create: this.createCreateMethod(endpoint, endpointConfig),
                 get: this.createGetMethod(endpoint, endpointConfig),
                 update: this.createUpdateMethod(endpoint, endpointConfig),
@@ -332,8 +336,9 @@ export default class Api {
         }
         else {//Endpoint is an object
             if (!endpoint.name || typeof endpoint.name !== "string")
-                throw ("An endpoint definition of type object must have a \"name\" property of type string");
+                throw new Error("An endpoint definition of type object must have a \"name\" property of type string");
 
+            endpointName = endpoint.name;
             endpointObject = endpoint.preventDefaultMethods ? {} : this.handleEndpointCall(endpoint.name, endpoint);
 
             if (endpoint.customMethods) {
@@ -343,8 +348,29 @@ export default class Api {
             }
         }
 
-        return endpointObject;
+        if( this.config.handleUnknownMethods ){
+            return new Proxy(endpointObject, { get: ( endpointObject, method )=>this.createUnknownMethod( endpointObject, endpointName, endpointConfig, method ) } );
+        }
 
+        return endpointObject;
+    }
+
+    createUnknownMethod( endpointObject, endpoint, endpointConfig, method ){
+        const _this = this;
+
+        if (method in endpointObject) return endpointObject[method]; // normal case, accessing a real property of the api object
+
+        return function( config = {} ){
+            const {params, customProp, id, ..._config} = config;
+            //Generate path
+            let path = _this.config.nameToPath.call(this, endpoint );
+            //Append the known method
+            path = urljoin( path, _this.config.nameToPath.call(this, method ));
+            //If the parameter "id" is sent, we append it to the end of the path
+            if(id) path = urljoin(path, id);
+            //Call api
+            return _this.apiCall( path, customProp || endpoint, params, {...endpointConfig, ..._config} )
+        }
     }
 
     createGetMethod( endpoint, endpointConfig ){
@@ -362,6 +388,24 @@ export default class Api {
                 return _this.apiCall( url, customProp || endpoint, params, {...endpointConfig, ..._config} )
             }
 
+    }
+
+    createCustomMethod( endpoint, endpointConfig ){
+
+        const _this = this;
+
+        return function( config = {} ){
+            const {path, params, customProp, id, ..._config} = config;
+            if(!path){
+                throw new Error("The \"path\" parameter is mandatory to call a custom method.");
+            }
+            //Generate path
+            let url = _this.config.nameToPath.call(this, endpoint );
+            url = urljoin(url, path);
+
+            //Call api
+            return _this.apiCall( url, customProp || endpoint, params, {...endpointConfig, ..._config} )
+        }
     }
 
     createCreateMethod( endpoint, endpointConfig ){
