@@ -53,14 +53,12 @@ describe( 'Api should make use of redux store', ()=> {
 
     it('should replace the old state the same endpoint is when called again', ()=>{
 
-
         api.store = createStore(reducer);
 
         return api.users.get().then( ()=> {
             api.users.get({params: {page: 3}}).then(() => {
-                    expect(store.getState().api.users).toEqual(users3);
-                }
-            );
+                expect(api.store.getState().api.users).toEqual(users3);
+            });
         });
     });
 

@@ -32,7 +32,7 @@
         "fetch-mock": "^9.11.0",
         "jest": "^27.4.7",
         "nock": "^13.2.2",
-        "node-fetch": "^3.2.0",
+        "node-fetch": "^2.6.7",
         "redux": "^4.1.2",
         "webpack": "^5.66.0",
         "webpack-cli": "^4.9.1"
@@ -42,5 +42,8 @@
         "qs": "^6.10.3",
         "url-join": "^4.0.1",
         "whatwg-fetch": "^3.6.2"
+    },
+    "jest": {
+        "testEnvironment": "jsdom"
     }
 }
