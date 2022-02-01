@@ -59,6 +59,7 @@ const defaultConfig = {
     queryStringOptions: { arrayFormat: 'brackets' }, // See https://github.com/ljharb/qs#stringifying for available options
     queueInterval: 180000,// 3 minutes
     reduxStore: undefined,
+    forceCustomProp: true,//If true, every call will try to save the response in the redux state, if false only if there's a customProp sent to the api call
     saveTokenToLocalStorage: false,
     strictMode: true,
     tokenKey: 'tideApiToken',
@@ -368,8 +369,10 @@ export default class Api {
             path = urljoin( path, _this.config.nameToPath.call(this, method ));
             //If the parameter "id" is sent, we append it to the end of the path
             if(id) path = urljoin(path, id);
+            //Get redux key to save response
+            const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
             //Call api
-            return _this.apiCall( path, customProp || endpoint, params, {...endpointConfig, ..._config} )
+            return _this.apiCall( path, property, params, {...endpointConfig, ..._config} )
         }
     }
 
@@ -384,8 +387,10 @@ export default class Api {
                 let url = _this.config.nameToPath.call(this, endpoint );
                 //If the parameter "id" is sent, we append it to the end of the path
                 if(id) url = urljoin(url, id);
+                //Get redux key to save response
+                const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
                 //Call api
-                return _this.apiCall( url, customProp || endpoint, params, {...endpointConfig, ..._config} )
+                return _this.apiCall( url, property, params, {...endpointConfig, ..._config} )
             }
 
     }
@@ -402,9 +407,10 @@ export default class Api {
             //Generate path
             let url = _this.config.nameToPath.call(this, endpoint );
             url = urljoin(url, path);
-
+            //Get redux key to save response
+            const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
             //Call api
-            return _this.apiCall( url, customProp || endpoint, params, {...endpointConfig, ..._config} )
+            return _this.apiCall( url, property, params, {...endpointConfig, ..._config} )
         }
     }
 
@@ -419,7 +425,9 @@ export default class Api {
         if( typeof endpoint === 'string' )
             return function( config = {} ){
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  _this.config.nameToPath( endpoint ), customProp || endpoint, params, {...defaultPostConfig, ...endpointConfig, ..._config}, files )
+                //Get redux key to save response
+                const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
+                return _this.apiCall(  _this.config.nameToPath( endpoint ), property, params, {...defaultPostConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
@@ -440,7 +448,9 @@ export default class Api {
                     throw (new Error("The update endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , customProp || endpoint, params, {...defaultPutConfig, ...endpointConfig, ..._config}, files )
+                //Get redux key to save response
+                const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
+                return _this.apiCall(  urljoin(_this.config.nameToPath( endpoint ), String(objectId) ) , property, params, {...defaultPutConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
@@ -462,7 +472,9 @@ export default class Api {
                     throw (new Error("The delete endpoint requires an id to be sent in the config object"));
 
                 const {params, files, customProp, ..._config} = config;
-                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), customProp || endpoint, params||{id:objectId}, {...defaultDeleteConfig, ...endpointConfig, ..._config}, files )
+                //Get redux key to save response
+                const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
+                return _this.apiCall(   urljoin(_this.config.nameToPath( endpoint ), String(objectId)), property, params||{id:objectId}, {...defaultDeleteConfig, ...endpointConfig, ..._config}, files )
             }
 
     }
@@ -559,7 +571,7 @@ export default class Api {
 
             const extractedData = config.getDataFromResponse.call(this, data, responseHeaders);
 
-            if( this.store ) {
+            if( this.store && property ) {
 
                 this.store.dispatch({
 
