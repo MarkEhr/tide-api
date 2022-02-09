@@ -571,7 +571,7 @@ export default class Api {
 
             const extractedData = config.getDataFromResponse.call(this, data, responseHeaders);
 
-            if( this.store && property ) {
+            if( this.store ) {
 
                 this.store.dispatch({
 
