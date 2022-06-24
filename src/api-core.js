@@ -488,6 +488,7 @@ export default class Api {
         else
             config={...this.config,...config};
 
+        const fetchParams = config.fetchParams||{};
         let method = config.method || "GET";
         const stateAction = config.stateAction || STATE_ACTION_SET;
         let useFormData = config.useFormData || false;
