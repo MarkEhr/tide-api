@@ -362,7 +362,7 @@ export default class Api {
         if (method in endpointObject) return endpointObject[method]; // normal case, accessing a real property of the api object
 
         return function( config = {} ){
-            const {params, customProp, id, ..._config} = config;
+            const {params, customProp, id, files, ..._config} = config;
             //Generate path
             let path = _this.config.nameToPath.call(this, endpoint );
             //Append the known method
@@ -372,7 +372,7 @@ export default class Api {
             //Get redux key to save response
             const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
             //Call api
-            return _this.apiCall( path, property, params, {...endpointConfig, ..._config} )
+            return _this.apiCall( path, property, params, {...endpointConfig, ..._config}, files );
         }
     }
 
