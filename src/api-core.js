@@ -400,7 +400,7 @@ export default class Api {
         const _this = this;
 
         return function( config = {} ){
-            const {path, params, customProp, id, ..._config} = config;
+            const {path, params, files, customProp, id, ..._config} = config;
             if(!path){
                 throw new Error("The \"path\" parameter is mandatory to call a custom method.");
             }
@@ -410,7 +410,7 @@ export default class Api {
             //Get redux key to save response
             const property = _this.config.forceCustomProp? customProp || endpoint : customProp;
             //Call api
-            return _this.apiCall( url, property, params, {...endpointConfig, ..._config} )
+            return _this.apiCall( url, property, params, {...endpointConfig, ..._config}, files )
         }
     }
 
@@ -700,7 +700,8 @@ export default class Api {
                 credentials: config.credentials,
                 headers,
                 method,
-                body
+                body,
+                ...fetchParams
             })
         //Get response
             .then(requestFinished,requestFinished)
@@ -739,3 +740,4 @@ export default class Api {
     }
 
 }
+
