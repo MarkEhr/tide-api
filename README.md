@@ -86,6 +86,7 @@ The default endpoints accept an `endpointArguments` object, which may have any o
 |method    | string    | The request method to use, the default depends on the endpoint type as follows, `get` -> "GET", `create` -> "POST", `update` -> "PUT", `delete` -> "DELETE"
 |params    | object    | Info to send to the server. In GET requests, `params` are sent as query string, in all the other methods they're sent as a json in the request body.
 |stateAction| string   | This says how to modify redux's state. See [redux section for available options](#Redux)
+|useCommonPath| boolean | If false, the endpoint path will not be prepended with the common path set in the global configuration.
 |useFormData| boolean  | Default to false. If true, the params are sent with `FormData` formatting in the request body. This is ignored if the method is set to "GET". This is enforced if the `files` property is set.
 
 > Also, any configuration found in the [Config parameters section](#Config-parameters) can be used in this object to override it for a single call.
