@@ -44,6 +44,7 @@ The configuration should be an object which could contain the following properti
 |strictMode        |boolean    | true          | If set to false, any endpoint could be called without defining it in the `endpoints` array. It will be called as if it were defined as a string.
 |tokenKey          |string     | "tideApiToken"    | The key to use in the local storage to save the token
 |useSessionStorage |boolean    | false         | If false the default storage will be localStorage if true it will be sessionStorage. The use of sessionStorage in combination with saveTokenToLocalStorage will create more secure ephemeral sessions which disappears when the tab is closed
+|handleUnknownMethods |boolean    | false         | If true, any unknown method called in an endpoint will be tried with the same name at the end of the url. e.g. `api.users.notStandard()` will try the url `users/not_standard` using th `nameToPath` function to convert the porperty to the path. (Available from 1.7.0)
 
 ### Endpoint configuration
 
