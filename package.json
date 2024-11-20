@@ -28,8 +28,10 @@
     "devDependencies": {
         "@babel/core": "^7.16.10",
         "@babel/preset-env": "^7.16.11",
+        "@types/jest": "^29.5.14",
         "babel-loader": "^8.2.3",
-        "fetch-mock": "^9.11.0",
+        "fetch-mock": "^12.2.0",
+        "isomorphic-fetch": "^3.0.0",
         "jest": "^27.4.7",
         "nock": "^13.2.2",
         "node-fetch": "^2.6.7",

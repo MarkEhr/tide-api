@@ -61,11 +61,13 @@ const defaultConfig = {
     reduxStore: undefined,
     forceCustomProp: true,//If true, every call will try to save the response in the redux state, if false only if there's a customProp sent to the api call
     saveTokenToLocalStorage: false,
-    strictMode: true,
+    strictMode: true, // Next major version will default to false
     tokenKey: 'tideApiToken',
-    useSessionStorage: false,
-    handleUnknownMethods: false,
-
+    useSessionStorage: false, // Legacy, use "storage" instead. Erase in next major version
+    handleUnknownMethods: false, // Next major version will default to true
+    storage: 'localStorage', // 'localStorage'|'sessionStorage'|false
+    useCache: true,// Next major version will default to false. Requires storage different to false
+    useQueue: true,// Next major version will default to false. Requires storage different to false
 };
 
 export default class Api {
@@ -84,25 +86,55 @@ export default class Api {
 
         this.store = this.config.reduxStore;
 
-        if( this.config.saveTokenToLocalStorage === 'safari' && !navigator.userAgent.match(/Version\/[\d.]+.*Safari/) )
+        // Turn off all storage related features if storage is set to false
+        if( !this.storageAvailable() ){
+            this.config.storage = false;
+            this.config.initializeFromLocalStorage = false;
             this.config.saveTokenToLocalStorage = false;
+            this.config.useCache = false;
+            this.config.useQueue = false;
+        }
 
-        if( this.config.saveTokenToLocalStorage && this.storageAvailable() && this.storageGet(this.config.tokenKey) )
+        // If saveTokenToLocalStorage is set to 'safari' and the browser is not Safari, set it to false
+        if( this.config.saveTokenToLocalStorage === 'safari' &&
+            typeof navigator !== 'undefined' && navigator.userAgent &&
+            !navigator.userAgent.match(/Version\/[\d.]+.*Safari/)
+        ) {
+            this.config.saveTokenToLocalStorage = false;
+        }
+
+        // Initialize the auth token from local storage
+        if( this.config.saveTokenToLocalStorage &&
+            this.storageGet(this.config.tokenKey)
+        ) {
             this.token = this.storageGet(this.config.tokenKey);
+        }
 
-        this.cacheManager = new CacheManager( config.tokenKey );
+        // Initialize the cache manager
+        if( this.config.useCache ) {
+            this.cacheManager = new CacheManager(config.tokenKey);
+        }
 
-        this.queueManager = new QueueManager( this, config.localStorageKey, config.queueInterval );
+        // Initialize the queue manager
+        if( this.config.useQueue ) {
+            this.queueManager = new QueueManager(this, config.localStorageKey, config.queueInterval);
+        }
 
 
-        if( window.navigator.serviceWorker ) {
+        // This does not belong here, it should be eliminated in the next major version
+        // The projects using it should set the listener themselves
+        if (typeof window !== 'undefined' &&
+            window.navigator &&
+            window.navigator.serviceWorker) {
+
             window.navigator.serviceWorker.addEventListener('message', event => {
                 if (event.data === 'refresh')
                     window.location.reload();
             });
         }
 
-        if(this.config.initializeFromLocalStorage) {
+        // Load the initial state from local storage.
+        if(this.storageAvailable() && this.config.initializeFromLocalStorage) {
             const initialState = Api.getInitialState(this.config.localStorageKey, this.config.useSessionStorage);
 
             if (initialState && this.store)
@@ -121,7 +153,8 @@ export default class Api {
     }
 
     /**
-     * This method is only call if the roxy feature is not available like in ie 11
+     * This method is only call if the proxy feature is not available like in ie 11
+     * It creates the endpoints as real properties of the object instead of proxying them at runtime
      *
      * @returns {{get: ((function(*=): Promise<*>)|undefined), create: ((function(*=): Promise<*>)|undefined), update: ((function(*=): Promise<*>)|undefined), delete: ((function(*=): Promise<*>)|undefined)}|{}|{get: ((function(*=): Promise<*>)|undefined), create: ((function(*=): Promise<*>)|undefined), update: ((function(*=): Promise<*>)|undefined), delete: ((function(*=): Promise<*>)|undefined)}}
      */
@@ -591,7 +624,7 @@ export default class Api {
                 this.store.dispatch(loadingEndAction);
             }
 
-            if( config.cacheable )
+            if( config.useCache && config.cacheable )
                 this.cacheManager.saveToCache( data, path, params );
 
             return extractedData;
@@ -632,14 +665,14 @@ export default class Api {
 
             if( !response.status ) {//Inside this if means the fetch failed
 
-                if( config.cacheable ) {//If it was a cacheable request, look for it in the cache and return it as if nothing has happened
+                if( config.useCache && config.cacheable ) {//If it was a cacheable request, look for it in the cache and return it as if nothing has happened
                     const cached = this.cacheManager.searchCache(path, params );
 
                     if (cached)
                         return cached;
                 }
 
-                if( config.queueable ){//If it was a queueable request, save it to the queue to try again later.
+                if( config.useQueue && config.queueable ){//If it was a queueable request, save it to the queue to try again later.
 
                     //console.log('Request to ' + path + ' queued.');
                     const item = this.queueManager.createQueueItem( path, property, params, config, files );
@@ -694,16 +727,15 @@ export default class Api {
             config.appendHeaders.call(this, headers, apiCallOptions);
 
         const url = urljoin( this.host, config.useCommonPath===false?'':config.commonPath, path, query);
+        const fetchOptions = {
+            credentials: config.credentials,
+            headers,
+            method,
+            body,
+            ...fetchParams
+        };
 
-        return fetch(
-            url,
-            {
-                credentials: config.credentials,
-                headers,
-                method,
-                body,
-                ...fetchParams
-            })
+        return fetch( url, fetchOptions)
         //Get response
             .then(requestFinished,requestFinished)
             .then( successHandler, errorHandler );
@@ -736,6 +768,10 @@ export default class Api {
     }
     storageAvailable = ()=>
     {
+        if (this.config.storage === false) {
+            return false;
+        }
+
         const storage = this.config.useSessionStorage? window.sessionStorage : window.localStorage;
         return !!(storage);
     }
