@@ -1,6 +1,8 @@
 import ApiCore from '../../../src/api-core';
 import fetchMock from 'fetch-mock';
 
+fetchMock.mockGlobal();
+
 describe('An endpoint configured as a string should have basic methods', ()=>{
 
     const api = new ApiCore({
@@ -49,15 +51,15 @@ describe('An endpoint configured as a string should have basic methods', ()=>{
         const sentUser = {name:'Mark'};
         const receivedUser = {id:1, name:'Mark'};
 
-        const mock = fetchMock
-            .post(/https:\/\/example.com\/users\??$/ , receivedUser);
+        fetchMock
+            .post(/https:\/\/example.com\/users\??$/ , receivedUser, 'users post');
 
         api.users.create( {params:sentUser} ).then( (response)=>{
                 expect(response).toEqual(receivedUser);
             }
         );
 
-        expect( mock.lastCall()[1].body ).toBe(JSON.stringify(sentUser));
+        expect( fetchMock.callHistory.lastCall().options.body ).toBe(JSON.stringify(sentUser));
     });
 
     it('should make a put request', ()=>{
@@ -82,7 +84,7 @@ describe('An endpoint configured as a string should have basic methods', ()=>{
                 expect(resp).toEqual(receivedUser);
             });
 
-        expect( mock.lastCall()[1].body ).toBe(JSON.stringify(sentUser));
+        expect( mock.callHistory.lastCall().options.body ).toBe(JSON.stringify(sentUser));
     });
 
     it('should make a delete request', ()=>{

@@ -1,6 +1,7 @@
 import ApiCore from '../../../src/api-core';
 import fetchMock from "fetch-mock";
 
+fetchMock.mockGlobal();
 fetchMock.config.overwriteRoutes = true;
 
 describe( 'New Api should login correctly', ()=> {

@@ -6,6 +6,8 @@ import reducer_loading_by_id from "../../../src/reducers/reducer_loading_by_id";
 import reducer_loading from "../../../src/reducers/reducer_loading";
 import {STATE_ACTION_CONCAT} from "../../../src/constants_api";
 
+fetchMock.mockGlobal();
+
 describe( 'Api should make use of redux store', ()=> {
 
     const reducer = combineReducers({api: reducer_api, loadingIds: reducer_loading_by_id, loading: reducer_loading} );

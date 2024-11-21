@@ -39,7 +39,7 @@ export default function dataReducer (state, action){
         else if( apiAction === STATE_ACTION_APPEND ) {
             if (typeof data === "undefined")
                 newData = [result.data];
-            else if( data.constructor === Array )
+            else if( Array.isArray(data) )
                 newData = [...data, result.data];
             else if( typeof data === "object" )
                 newData = { ...data, ...result.data };
@@ -48,7 +48,7 @@ export default function dataReducer (state, action){
         else if( apiAction === STATE_ACTION_PREPEND ) {
             if (typeof data === "undefined")
                 newData = [result.data];
-            else if( data.constructor === Array )
+            else if( Array.isArray(data) )
                 newData = [result.data, ...data];
             else if( typeof data === "object" )
                 newData = { ...result.data, ...data };
@@ -57,7 +57,7 @@ export default function dataReducer (state, action){
         else if( apiAction === STATE_ACTION_CONCAT ) {
             if (typeof data === "undefined")
                 newData = result.data;
-            else if (data.constructor === Array)
+            else if (Array.isArray(data))
                 newData = [...data, ...result.data];
             else if( typeof data === "object" )
                 newData = { ...data, ...result.data };
@@ -66,7 +66,7 @@ export default function dataReducer (state, action){
         else if( apiAction === STATE_ACTION_PRE_CONCAT ) {
             if (typeof data === "undefined")
                 newData = result.data;
-            else if (data.constructor === Array)
+            else if (Array.isArray(data))
                 newData = [...result.data, ...data];
             else if( typeof data === "object" )
                 newData = {...result.data, ...data};
@@ -74,7 +74,7 @@ export default function dataReducer (state, action){
 
         else if( apiAction === STATE_ACTION_SEARCH_N_DELETE){
 
-            if ( data && data.constructor === Array ){
+            if ( data && Array.isArray(data) ){
                 newData = [];
 
                 for(let i=0; i<data.length; i++) {
@@ -92,7 +92,7 @@ export default function dataReducer (state, action){
         }
         else if( apiAction === STATE_ACTION_SEARCH_N_REPLACE){
 
-            if ( data && data.constructor === Array ){
+            if ( data && Array.isArray(data) ){
                 newData = [];
 
                 for(let i=0; i<data.length; i++) {
