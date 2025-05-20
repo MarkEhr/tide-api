@@ -11,6 +11,9 @@ import {
 export {default as reducer} from './reducers/reducer_api';
 export {default as loadingReducer} from './reducers/reducer_loading';
 export {default as loadingByIdReducer} from './reducers/reducer_loading_by_id';
+export {default as ReduxAdapter} from './stateAdapters/ReduxAdapter';
+export {default as SimpleAdapter} from './stateAdapters/SimpleAdapter';
+export {default as ObservableAdapter} from './stateAdapters/ObservableAdapter';
 export { LOGIN_STATE, LOGIN_LOADING_ID } from "./constants_api";
 export const STATE_ACTIONS = {
     ACTION_PREFIX, STATE_ACTION_SET,

@@ -15,6 +15,7 @@ import { APP_LOADING_END, APP_LOADING_START} from "./actions/types";
 import CacheManager from './utils/CacheManager';
 import QueueManager from "./utils/QueueManager";
 import LocalStorageState from "./utils/LocalStorageState";
+import ReduxAdapter from "./stateAdapters/ReduxAdapter";
 
 //Default initialization parameters
 const defaultConfig = {
@@ -58,6 +59,7 @@ const defaultConfig = {
     parseJson: true,
     queryStringOptions: { arrayFormat: 'brackets' }, // See https://github.com/ljharb/qs#stringifying for available options
     queueInterval: 180000,// 3 minutes
+    stateAdapter: undefined,
     reduxStore: undefined,
     forceCustomProp: true,//If true, every call will try to save the response in the redux state, if false only if there's a customProp sent to the api call
     saveTokenToLocalStorage: false,
@@ -84,7 +86,25 @@ export default class Api {
         this.host = config.host;
         this.token = null;
 
-        this.store = this.config.reduxStore;
+        this._store = this.config.reduxStore;
+        Object.defineProperty(this, 'store', {
+            get: () => this._store,
+            set: (value) => {
+                this._store = value;
+                if(!this.config.stateAdapter){
+                    this.stateAdapter = value ? new ReduxAdapter(value) : undefined;
+                } else if(this.stateAdapter && this.stateAdapter.setStore){
+                    this.stateAdapter.setStore(value);
+                }
+            }
+        });
+        if(this.config.stateAdapter){
+            this.stateAdapter = this.config.stateAdapter;
+            if(this.stateAdapter.setStore)
+                this.stateAdapter.setStore(this._store);
+        } else if(this._store){
+            this.stateAdapter = new ReduxAdapter(this._store);
+        }
 
         // Turn off all storage related features if storage is set to false
         if( !this.storageAvailable() ){
@@ -137,13 +157,8 @@ export default class Api {
         if(this.storageAvailable() && this.config.initializeFromLocalStorage) {
             const initialState = Api.getInitialState(this.config.localStorageKey, this.config.useSessionStorage);
 
-            if (initialState && this.store)
-                this.store.dispatch({
-                    type: ACTION_PREFIX + ACTION_SET_STATE,
-                    payload: {
-                        state: initialState,
-                    }
-                });
+            if (initialState && this.stateAdapter)
+                this.stateAdapter.initializeState(initialState);
         }
 
         if(typeof Proxy === 'undefined')
@@ -220,23 +235,15 @@ export default class Api {
             this.config.login.path
         );
 
-        if( this.store )
-            this.store.dispatch({ type:APP_LOADING_START, payload: {id:LOGIN_LOADING_ID} });
+        if( this.stateAdapter )
+            this.stateAdapter.startLoading(LOGIN_LOADING_ID);
 
         const loginError = (response)=>{
 
             const newState = response && response.status === 401? LOGIN_STATE.BAD_CREDENTIALS : LOGIN_STATE.LOGIN_ERROR;
-            if (this.store) {
-
-                this.store.dispatch({
-                    type: ACTION_PREFIX + ACTION_LOG,
-                    payload: {
-                        state: newState,
-                        storageKey: this.config.localStorageKey,
-                        useSessionStorage: this.config.useSessionStorage
-                    }
-                });
-                this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
+            if (this.stateAdapter) {
+                this.stateAdapter.log(newState, this.config.localStorageKey, this.config.useSessionStorage);
+                this.stateAdapter.endLoading(LOGIN_LOADING_ID);
             }
 
             let loginError;
@@ -265,8 +272,8 @@ export default class Api {
                     token = this.config.login.tokenExtractor.call(this, response);
 
                 this.setLoggedIn(token);
-                if( this.store )
-                    this.store.dispatch({type: APP_LOADING_END, payload: {id:LOGIN_LOADING_ID}});
+                if( this.stateAdapter )
+                    this.stateAdapter.endLoading(LOGIN_LOADING_ID);
 
                 return response;
             };
@@ -299,15 +306,8 @@ export default class Api {
         if( this.config.saveTokenToLocalStorage && this.token && this.storageAvailable())
             this.storageSet(this.config.tokenKey, this.token);
 
-        if( this.store ) {
-            this.store.dispatch({
-                type: ACTION_PREFIX + ACTION_LOG,
-                payload: {
-                    state: LOGIN_STATE.LOGGED_IN,
-                    storageKey: this.config.localStorageKey,
-                    useSessionStorage: this.config.useSessionStorage
-                }
-            });
+        if( this.stateAdapter ) {
+            this.stateAdapter.log(LOGIN_STATE.LOGGED_IN, this.config.localStorageKey, this.config.useSessionStorage);
         }
     };
 
@@ -316,18 +316,9 @@ export default class Api {
 
         const done = ( response )=> {
 
-            if( this.store ) {
-                this.store.dispatch({
-                    type: ACTION_PREFIX + ACTION_LOG,
-                    payload: {
-                        state: LOGIN_STATE.NOT_LOGGED,
-                        storageKey: this.config.localStorageKey,
-                        useSessionStorage: this.config.useSessionStorage
-                    }
-                });
-                this.store.dispatch({
-                    type: STATE_ACTION_CLEAR
-                })
+            if( this.stateAdapter ) {
+                this.stateAdapter.log(LOGIN_STATE.NOT_LOGGED, this.config.localStorageKey, this.config.useSessionStorage);
+                this.stateAdapter.clearState();
             }
 
             if( this.config.saveTokenToLocalStorage && this.token && this.storageAvailable())
@@ -581,22 +572,16 @@ export default class Api {
         }
 
         //Make request
-        let loadingStartAction = {type:APP_LOADING_START};
-        if( config.loadingId ) loadingStartAction.payload = {id:config.loadingId};
-
-        if( this.store )
-            this.store.dispatch(loadingStartAction);
+        if( this.stateAdapter )
+            this.stateAdapter.startLoading(config.loadingId);
 
         let responseHeaders;
 
         const successHandler = ( data )=>{
 
-            let loadingEndAction = {type:APP_LOADING_END};
-            if( config.loadingId ) loadingEndAction.payload = {id:config.loadingId};
-
             if( data === QUEUED_RESPONSE ) {
-                if( this.store )
-                    this.store.dispatch(loadingEndAction);
+                if( this.stateAdapter )
+                    this.stateAdapter.endLoading(config.loadingId);
                 return data;
             }
 
@@ -605,23 +590,16 @@ export default class Api {
 
             const extractedData = config.getDataFromResponse.call(this, data, responseHeaders);
 
-            if( this.store ) {
-
-                this.store.dispatch({
-
-                    type: ACTION_PREFIX + stateAction,
-                    payload: {
-                        success: true,
-                        method,
-                        property,
-                        params,
-                        data: extractedData,
-                        meta: config.getMetaDataFromResponse.call(this, data, responseHeaders )
-                    }
-
+            if( this.stateAdapter ) {
+                this.stateAdapter.updateData(stateAction, {
+                    success: true,
+                    method,
+                    property,
+                    params,
+                    data: extractedData,
+                    meta: config.getMetaDataFromResponse.call(this, data, responseHeaders )
                 });
-
-                this.store.dispatch(loadingEndAction);
+                this.stateAdapter.endLoading(config.loadingId);
             }
 
             if( config.useCache && config.cacheable )
@@ -632,13 +610,8 @@ export default class Api {
 
         const errorHandler = ( response )=>{
 
-            let loadingEndAction = {type:APP_LOADING_END};
-
-            if( config.loadingId )
-                loadingEndAction.payload = {id:config.loadingId};
-
-            if( this.store )
-                this.store.dispatch(loadingEndAction);
+            if( this.stateAdapter )
+                this.stateAdapter.endLoading(config.loadingId);
 
             if( response && response.headers &&
                 response.headers.get("Content-Type") && (
@@ -690,16 +663,8 @@ export default class Api {
 
             if (response.status === 401) {
 
-                if (this.store) {
-                    this.store.dispatch({
-                        type: ACTION_PREFIX + ACTION_LOG,
-                        payload: {
-                            state: LOGIN_STATE.NOT_LOGGED,
-                            storageKey: config.localStorageKey,
-                            useSessionStorage: this.config.useSessionStorage
-                        }
-
-                    });
+                if (this.stateAdapter) {
+                    this.stateAdapter.log(LOGIN_STATE.NOT_LOGGED, config.localStorageKey, this.config.useSessionStorage);
                 }
 
                 return Promise.reject(response);
@@ -744,11 +709,8 @@ export default class Api {
 
     clearProperty = (property)=>
     {
-        if( this.store )
-            this.store.dispatch({
-                type: ACTION_PREFIX+STATE_ACTION_CLEAR,
-                payload: {property}
-            })
+        if( this.stateAdapter )
+            this.stateAdapter.clearProperty(property);
     };
 
     storageGet = (key)=>
