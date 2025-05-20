@@ -39,7 +39,8 @@ The configuration should be an object which could contain the following properti
 |parseJson         |boolean    | true          | If true and the server response has "content-type: json", the response will be parsed before resolving the api's promise
 |queryStringOptions|object     | { arrayFormat: 'brackets' } | Options for converting the request parameters to a GET query string. See [qs](https://github.com/ljharb/qs#stringifying) for available options.
 |queueInterval     |integer    | 180000        | Time in milliseconds between each intent to resend a request when it is queued
-|reduxStore        |object     | undefined     |The redux store to dispatch endpoints actions. See [Redux](#Redux) to know how to use it
+|stateAdapter      |object     | undefined     |Object in charge of storing the api state. If omitted, a Redux adapter is created when `reduxStore` is provided.
+|reduxStore        |object     | undefined     |**Deprecated**. Redux store used to create the default adapter. See [Redux](#Redux)
 |saveTokenToLocalStorage|boolean&#124;"safari" | false | Whether to save the authentication token to local storage or not. See [Why to do that](#authentication-tokens-and-local-storage).
 |strictMode        |boolean    | true          | If set to false, any endpoint could be called without defining it in the `endpoints` array. It will be called as if it were defined as a string.
 |tokenKey          |string     | "tideApiToken"    | The key to use in the local storage to save the token
@@ -143,9 +144,13 @@ If `saveTokenToLocalStorage` is set to `true` the token will be sent as a header
  TODO: Create a configuration to set how is the token sent, change header format or append it to other request part.
  
  
- ### Redux
- 
- There's a default integration with redux which can be activated just passing the store to the constructor with the `reduxStore` property.
+### State adapters
+
+`tide-api` can store responses using different state management solutions. A `stateAdapter` object must implement the logic to update your store. If none is provided and a `reduxStore` is passed, a built in Redux adapter will be used.
+
+#### Redux
+
+When using Redux, just pass your store in the `reduxStore` config or create a `ReduxAdapter` yourself.
  
  If you want to use redux, you need to include the api's reducer in to your store's root reducer. Here's an example:
  
@@ -172,6 +177,30 @@ If `saveTokenToLocalStorage` is set to `true` the token will be sent as a header
  - `loadingIds`: this is like the loading indicator but for individual endpoint calls. To use this you should send a `loadingId` string to an endpoint call like:    
  `api.users.get( {loadingId:"usersView"} )` after this there will appear this property in the redux state with the count of pending requests with this specific loadingId.
  So after that call and before the request is finished, you would find your state like this: `state.loadingIds.usersView // 1`.
+
+#### Observable
+
+If you do not want to depend on Redux but still need to react to state changes, you can use the `ObservableAdapter`. This adapter keeps the state in memory and exposes a `subscribe` method that notifies listeners whenever the state changes. A listener receives the entire state and can be removed by calling the function returned from `subscribe`.
+
+```javascript
+import Api, { ObservableAdapter } from 'tide-api';
+
+const adapter = new ObservableAdapter();
+const api = new Api({
+    host: 'https://example.com',
+    endpoints: ['users'],
+    stateAdapter: adapter
+});
+
+// Example React hook
+function useApiState() {
+    const [state, setState] = React.useState(adapter.getState());
+    React.useEffect(() => adapter.subscribe(setState), []);
+    return state;
+}
+```
+
+The adapter itself does not depend on React, so any framework can subscribe to changes and update its UI accordingly.
  
  #### Redux state actions
  
