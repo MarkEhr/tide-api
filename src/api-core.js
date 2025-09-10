@@ -68,6 +68,7 @@ const defaultConfig = {
     storage: 'localStorage', // 'localStorage'|'sessionStorage'|false
     useCache: true,// Next major version will default to false. Requires storage different to false
     useQueue: true,// Next major version will default to false. Requires storage different to false
+    debugMode: false,// This will log all the requests and responses to the console
 };
 
 export default class Api {
@@ -681,6 +682,10 @@ export default class Api {
                     return QUEUED_RESPONSE;
                 }
 
+                if( config.debugMode ){
+                    console.log("[tide-api] API CALL FAILED: ", path, response);
+                }
+
                 throw(response);
             }
 
@@ -689,6 +694,10 @@ export default class Api {
             }
 
             if (response.status === 401) {
+
+                if( config.debugMode ){
+                    console.log("[tide-api] API CALL: Unauthorized", path, response);
+                }
 
                 if (this.store) {
                     this.store.dispatch({
@@ -705,19 +714,50 @@ export default class Api {
                 return Promise.reject(response);
             }
             else if (response.status >= 400) {
-
+                if( config.debugMode ){
+                    console.log("[tide-api] API CALL: Bad request", path, response);
+                }
                 return Promise.reject(response);
             }
             else if( response.status === 204 ){
+                if( config.debugMode ){
+                    console.log("[tide-api] API CALL: No content", path, response);
+                }
                 return response;
             }
             else if(
                 config.parseJson &&
                 response.json &&
                 response.headers.get("Content-Type").split(";")[0] === "application/json"
-            )
-                return response.json();
+            ) {
+                return response.text().then( rawBody => {
+                    try{
+                        const data = JSON.parse(rawBody);
+                        if( config.debugMode ){
+                            console.log("[tide-api] API CALL: Success (JSON)", path, data);
+                        }
+                        return data;
+                    } catch( error ){
+                        if( config.debugMode ){
+                            console.log("[tide-api] API CALL: Error parsing JSON", path, error, response);
+                            console.log("[tide-api] API CALL: Raw response body", rawBody);
+                        }
+                        throw error;
+                    }
+                })
+                    .catch( (error)=>{
+                        if( config.debugMode ){
+                            console.log("[tide-api] API CALL: Error reading JSON response", path, error, response);
+                        }
+                        throw error;
+                    });
+            }
 
+            if( config.debugMode ){
+                console.log("[tide-api] API CALL: Success (No JSON)", path, response);
+            }
+
+            // Next major version: To be consistent with the json response, we should return the response body, instead of the response object
             return response;
         };
 
@@ -734,6 +774,10 @@ export default class Api {
             body,
             ...fetchParams
         };
+
+        if( config.debugMode ){
+            console.log("[tide-api] API CALL: Params", url, fetchOptions);
+        }
 
         return fetch( url, fetchOptions)
         //Get response
